@@ -1,91 +1,14 @@
-// 로컬 스토리지 함수들
-function saveUser(user) {
-    const users = getUsers();
-    users.push(user);
-    localStorage.setItem('users', JSON.stringify(users));
-}
-
-function getUsers() {
-    return JSON.parse(localStorage.getItem('users') || '[]');
-}
-
-function findUser(email) {
-    const users = getUsers();
-    return users.find(user => user.email === email);
-}
-
-function isValidPhone(phone) {
-    // 하이픈이 있든 없든 상관없는 유효성 검사
-    return /^01[016789][-\s]?\d{3,4}[-\s]?\d{4}$/.test(phone);
-}
-
-function isValidEmail(email) {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
-
-// 관리자 계정 초기화
-function initAdmin() {
-    if (!findUser('admin')) {
-        saveUser({
-            email: 'admin',
-            password: 'admin123',
-            name: '관리자',
-            phone: '010-0000-0000',
-            role: 'admin'
-        });
-    }
-}
-
-// 소스코드 로드 함수
-async function loadSourceCode() {
-    const sourceCodeArea = document.getElementById('source-code');
-    if (sourceCodeArea) {
-        sourceCodeArea.value = "로딩 중...";
-        
-        try {
-            // 모든 파일 경로
-            const files = [
-                // HTML 파일
-                { path: 'index.html', type: '-- HTML --' },
-                { path: 'dashboard.html', type: '-- HTML --' },
-                
-                // CSS 파일
-                { path: 'css/style.css', type: '-- CSS --' },
-                { path: 'css/dashboard.css', type: '-- CSS --' },
-                
-                // JavaScript 파일
-                { path: 'js/auth.js', type: '-- JavaScript --' },
-                { path: 'js/dashboard.js', type: '-- JavaScript --' },
-                
-                // 백엔드 파일
-                { path: 'worker/index.js', type: '-- Backend (Cloudflare Worker) --' },
-                { path: 'worker/wrangler.toml', type: '-- Config --' }
-            ];
-            
-            let allCode = '';
-            
-            for (const file of files) {
-                try {
-                    const response = await fetch(file.path);
-                    const content = await response.text();
-                    
-                    allCode += `\n\n/* ==================== ${file.type} ${file.path} ==================== */\n\n`;
-                    allCode += content;
-                } catch (err) {
-                    allCode += `\n\n/* Error loading ${file.path}: ${err.message} */\n\n`;
-                }
-            }
-            
-            sourceCodeArea.value = allCode;
-        } catch (error) {
-            sourceCodeArea.value = `소스코드 로딩 오류: ${error.message}`;
-        }
-    }
-}
+import { API } from './api.js';
+import { LoadingIndicator, ToastNotification } from './components.js';
 
 // DOM이 로드된 후 실행
-document.addEventListener('DOMContentLoaded', function() {
-    initAdmin();
+document.addEventListener('DOMContentLoaded', async function() {
+    // 관리자 계정 초기화 (첫 실행 시에만 필요)
+    try {
+        await initAdmin();
+    } catch (error) {
+        console.log('관리자 계정이 이미 존재합니다.');
+    }
     
     // 탭 전환 기능
     const loginTab = document.getElementById('login-tab');
@@ -148,7 +71,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const loginBtn = document.getElementById('login-btn');
     const loginError = document.getElementById('login-error');
     
-    loginBtn.addEventListener('click', function() {
+    loginBtn.addEventListener('click', async function() {
         const email = document.getElementById('login-email').value;
         const password = document.getElementById('login-password').value;
         
@@ -162,28 +85,29 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        const user = findUser(email);
-        
-        if (!user || user.password !== password) {
+        try {
+            LoadingIndicator.show('로그인 중...');
+            const response = await API.login(email, password);
+            
+            // 세션 스토리지에 토큰과 사용자 정보 저장
+            sessionStorage.setItem('currentUser', JSON.stringify(response.user));
+            
+            // 대시보드로 리디렉션
+            window.location.href = 'dashboard.html';
+        } catch (error) {
+            LoadingIndicator.hide();
             if (loginError) {
-                loginError.textContent = '이메일 또는 비밀번호가 올바르지 않습니다.';
+                loginError.textContent = error.message || '로그인에 실패했습니다.';
                 loginError.style.display = 'block';
             }
-            return;
         }
-        
-        // 로그인 성공 시 세션 스토리지에 사용자 정보 저장
-        sessionStorage.setItem('currentUser', JSON.stringify(user));
-        
-        // 대시보드로 리디렉션
-        window.location.href = 'dashboard.html';
     });
     
     // 회원가입 기능
     const registerBtn = document.getElementById('register-btn');
     const registerError = document.getElementById('register-error');
     
-    registerBtn.addEventListener('click', function() {
+    registerBtn.addEventListener('click', async function() {
         const email = document.getElementById('register-email').value;
         const password = document.getElementById('register-password').value;
         const name = document.getElementById('register-name').value;
@@ -209,9 +133,9 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        if (password.length < 6) {
+        if (password.length < 8) {
             if (registerError) {
-                registerError.textContent = '비밀번호는 최소 6자 이상이어야 합니다.';
+                registerError.textContent = '비밀번호는 최소 8자 이상이어야 합니다.';
                 registerError.style.display = 'block';
             }
             return;
@@ -233,32 +157,97 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        // 이메일 중복 확인
-        if (findUser(email)) {
+        try {
+            LoadingIndicator.show('회원가입 진행 중...');
+            await API.register({ email, password, name, phone });
+            LoadingIndicator.hide();
+            
+            // 성공 시 로그인 폼으로 전환
+            loginTab.click();
+            document.getElementById('login-email').value = email;
+            
+            if (loginError) {
+                loginError.textContent = '회원가입이 완료되었습니다. 로그인해주세요.';
+                loginError.style.color = 'green';
+                loginError.style.display = 'block';
+            }
+            
+            ToastNotification.show('회원가입이 성공적으로 완료되었습니다.', 'success');
+        } catch (error) {
+            LoadingIndicator.hide();
             if (registerError) {
-                registerError.textContent = '이미 사용 중인 이메일입니다.';
+                registerError.textContent = error.message || '회원가입에 실패했습니다.';
                 registerError.style.display = 'block';
             }
-            return;
-        }
-        
-        // 사용자 등록
-        saveUser({
-            email,
-            password,
-            name,
-            phone,
-            role: 'user'
-        });
-        
-        // 성공 시 로그인 폼으로 전환
-        loginTab.click();
-        document.getElementById('login-email').value = email;
-        
-        if (loginError) {
-            loginError.textContent = '회원가입이 완료되었습니다. 로그인해주세요.';
-            loginError.style.color = 'green';
-            loginError.style.display = 'block';
         }
     });
 });
+
+// 관리자 계정 초기화
+async function initAdmin() {
+    try {
+        return await API.initAdmin();
+    } catch (error) {
+        console.log('관리자 계정 초기화 중 오류:', error);
+        throw error;
+    }
+}
+
+// 유효성 검사 함수
+function isValidEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function isValidPhone(phone) {
+    // 하이픈이 있든 없든 상관없는 유효성 검사
+    return /^01[016789][-\s]?\d{3,4}[-\s]?\d{4}$/.test(phone);
+}
+
+// 소스코드 로드 함수 (기존과 동일하게 유지)
+async function loadSourceCode() {
+    const sourceCodeArea = document.getElementById('source-code');
+    if (sourceCodeArea) {
+        sourceCodeArea.value = "로딩 중...";
+        
+        try {
+            // 모든 파일 경로
+            const files = [
+                // HTML 파일
+                { path: 'index.html', type: '-- HTML --' },
+                { path: 'dashboard.html', type: '-- HTML --' },
+                
+                // CSS 파일
+                { path: 'css/style.css', type: '-- CSS --' },
+                { path: 'css/dashboard.css', type: '-- CSS --' },
+                
+                // JavaScript 파일
+                { path: 'js/auth.js', type: '-- JavaScript --' },
+                { path: 'js/api.js', type: '-- JavaScript --' },
+                { path: 'js/components.js', type: '-- JavaScript --' },
+                { path: 'js/dashboard.js', type: '-- JavaScript --' },
+                
+                // 백엔드 파일
+                { path: 'worker/index.js', type: '-- Backend (Cloudflare Worker) --' },
+                { path: 'worker/wrangler.toml', type: '-- Config --' }
+            ];
+            
+            let allCode = '';
+            
+            for (const file of files) {
+                try {
+                    const response = await fetch(file.path);
+                    const content = await response.text();
+                    
+                    allCode += `\n\n/* ==================== ${file.type} ${file.path} ==================== */\n\n`;
+                    allCode += content;
+                } catch (err) {
+                    allCode += `\n\n/* Error loading ${file.path}: ${err.message} */\n\n`;
+                }
+            }
+            
+            sourceCodeArea.value = allCode;
+        } catch (error) {
+            sourceCodeArea.value = `소스코드 로딩 오류: ${error.message}`;
+        }
+    }
+}
