@@ -1,1 +1,1104 @@
-1
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>펫그룸 - 대시보드</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/animations/scale.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+<script src="https://lib.yourware.so/yourware-lib.umd.js" id="yourware-lib"></script></head>
+<body>
+    <!-- Loading Animation -->
+    <div class="loader">
+        <div class="paw-print-container">
+            <div class="paw-print">
+                <div class="pad large"></div>
+                <div class="pad small-1"></div>
+                <div class="pad small-2"></div>
+                <div class="pad small-3"></div>
+                <div class="pad small-4"></div>
+            </div>
+        </div>
+        <div class="loading-text">로딩 중...</div>
+    </div>
+    
+    <div class="wrapper">
+        <!-- 사이드바 -->
+        <div class="sidebar">
+            <div class="sidebar-brand">
+                <h2><i class="fas fa-paw"></i> <span>펫그룸</span></h2>
+                <button id="toggle-sidebar" class="toggle-sidebar" aria-label="토글 사이드바">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+            </div>
+            
+            <div class="user-profile">
+                <div class="user-avatar">
+                    <i class="fas fa-user-circle"></i>
+                </div>
+                <div class="user-info">
+                    <h3 id="sidebar-user-name">관리자</h3>
+                    <span class="user-role">관리자</span>
+                </div>
+            </div>
+            
+            <ul class="sidebar-menu">
+                <li class="active">
+                    <a href="#" data-page="appointments" data-tippy-content="예약 관리">
+                        <i class="fas fa-calendar-check"></i> 
+                        <span class="menu-text">예약관리</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" data-page="customers" data-tippy-content="고객 정보">
+                        <i class="fas fa-users"></i> 
+                        <span class="menu-text">고객정보</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" data-page="sales" data-tippy-content="매출 관리">
+                        <i class="fas fa-chart-line"></i> 
+                        <span class="menu-text">매출관리</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" data-page="settings" data-tippy-content="설정">
+                        <i class="fas fa-cog"></i> 
+                        <span class="menu-text">설정</span>
+                    </a>
+                </li>
+                <li class="logout">
+                    <a href="#" id="logout-btn" data-tippy-content="로그아웃">
+                        <i class="fas fa-sign-out-alt"></i> 
+                        <span class="menu-text">로그아웃</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- 메인 컨텐츠 -->
+        <div class="main-content">
+            <header>
+                <div class="header-left">
+                    <button id="mobile-toggle" class="mobile-toggle">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="header-title">
+                        <h1>예약관리</h1>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div class="date-display">
+                        <i class="far fa-calendar-alt"></i>
+                        <span id="current-date-display"></span>
+                    </div>
+                    <div class="notifications">
+                        <button class="icon-btn" id="notification-btn" data-count="3" aria-label="알림">
+                            <i class="far fa-bell"></i>
+                        </button>
+                        <div class="notification-dropdown">
+                            <div class="notification-header">
+                                <h3>알림</h3>
+                                <button class="mark-all-read">모두 읽음</button>
+                            </div>
+                            <div class="notification-items">
+                                <div class="notification-item unread">
+                                    <div class="notification-icon">
+                                        <i class="fas fa-calendar-check"></i>
+                                    </div>
+                                    <div class="notification-content">
+                                        <p>김철수 고객님 오늘 10시 예약</p>
+                                        <span class="notification-time">10분 전</span>
+                                    </div>
+                                </div>
+                                <div class="notification-item unread">
+                                    <div class="notification-icon">
+                                        <i class="fas fa-user-plus"></i>
+                                    </div>
+                                    <div class="notification-content">
+                                        <p>새로운 고객 등록: 박미영</p>
+                                        <span class="notification-time">1시간 전</span>
+                                    </div>
+                                </div>
+                                <div class="notification-item unread">
+                                    <div class="notification-icon">
+                                        <i class="fas fa-check-circle"></i>
+                                    </div>
+                                    <div class="notification-content">
+                                        <p>오늘의 예약 5건 중 3건 완료</p>
+                                        <span class="notification-time">3시간 전</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="notification-footer">
+                                <a href="#">모든 알림 보기</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="user-info">
+                        <span id="user-name">관리자</span>
+                        <div class="user-image">
+                            <i class="fas fa-user-circle"></i>
+                        </div>
+                        <div class="user-dropdown">
+                            <a href="#"><i class="fas fa-user-cog"></i> 내 프로필</a>
+                            <a href="#"><i class="fas fa-cog"></i> 설정</a>
+                            <a href="#" id="header-logout-btn"><i class="fas fa-sign-out-alt"></i> 로그아웃</a>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- 컨텐츠 영역 -->
+            <div class="content-container">
+                <!-- 예약관리 페이지 -->
+                <div class="page active animate__animated animate__fadeIn" id="appointments-page">
+                    <div class="dashboard-header">
+                        <div class="dashboard-title">
+                            <i class="fas fa-calendar-check"></i>
+                            <h2>일정 관리</h2>
+                        </div>
+                        <div class="action-buttons">
+                            <button class="btn btn-primary" id="new-appointment-btn">
+                                <i class="fas fa-plus"></i> 신규예약
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="quick-stats">
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-calendar-check"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h3>오늘 예약</h3>
+                                <p id="today-appointments">5건</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h3>다음 예약</h3>
+                                <p id="next-appointment">30분 후 (김철수님)</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h3>완료</h3>
+                                <p id="completed-appointments">2건 / 5건</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-ban"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h3>취소</h3>
+                                <p id="canceled-appointments">0건</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="calendar-view-options">
+                        <div class="view-selector">
+                            <button class="view-btn active" data-view="day">일간</button>
+                            <button class="view-btn" data-view="week">주간</button>
+                            <button class="view-btn" data-view="month">월간</button>
+                        </div>
+                        <div class="staff-filter">
+                            <label for="calendar-staff-filter">디자이너:</label>
+                            <select id="calendar-staff-filter" class="form-control">
+                                <option value="all">전체</option>
+                                <!-- 담당자 옵션은 자바스크립트로 생성됩니다 -->
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="calendar-container">
+                        <div class="calendar-header">
+                            <div class="calendar-header-left">
+                                <button id="prev-nav" class="calendar-nav-btn" aria-label="이전">
+                                    <i class="fas fa-chevron-left"></i>
+                                </button>
+                                <h2 id="current-date">2023년 7월 15일</h2>
+                                <button id="next-nav" class="calendar-nav-btn" aria-label="다음">
+                                    <i class="fas fa-chevron-right"></i>
+                                </button>
+                                <button id="today-btn" class="calendar-today-btn">
+                                    <i class="fas fa-calendar-day"></i> 오늘
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- 일간 캘린더 -->
+                        <div class="calendar-view active" id="day-view">
+                            <div class="staff-schedules" id="staff-schedules">
+                                <!-- 직원별 일정은 자바스크립트로 생성됩니다 -->
+                            </div>
+                        </div>
+                        
+                        <!-- 주간 캘린더 -->
+                        <div class="calendar-view" id="week-view">
+                            <div class="week-header" id="week-header">
+                                <!-- 요일 헤더는 자바스크립트로 생성됩니다 -->
+                            </div>
+                            <div class="week-body" id="week-body">
+                                <!-- 주간 일정은 자바스크립트로 생성됩니다 -->
+                            </div>
+                        </div>
+                        
+                        <!-- 월간 캘린더 -->
+                        <div class="calendar-view" id="month-view">
+                            <div class="month-header">
+                                <div class="weekday">일</div>
+                                <div class="weekday">월</div>
+                                <div class="weekday">화</div>
+                                <div class="weekday">수</div>
+                                <div class="weekday">목</div>
+                                <div class="weekday">금</div>
+                                <div class="weekday">토</div>
+                            </div>
+                            <div class="month-body" id="month-body">
+                                <!-- 월간 일정은 자바스크립트로 생성됩니다 -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 고객정보 페이지 -->
+                <div class="page" id="customers-page">
+                    <div class="dashboard-header">
+                        <div class="dashboard-title">
+                            <i class="fas fa-users"></i>
+                            <h2>고객 관리</h2>
+                        </div>
+                        <div class="action-buttons">
+                            <button class="btn btn-primary" id="new-customer-btn">
+                                <i class="fas fa-plus"></i> 신규고객등록
+                            </button>
+                            <button class="btn btn-secondary" id="import-customers-btn">
+                                <i class="fas fa-file-import"></i> 엑셀 일괄등록
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="search-container">
+                        <div class="search-input">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="customer-search" placeholder="이름 또는 연락처로 검색" class="form-control">
+                        </div>
+                        <button class="btn btn-primary" id="search-btn">
+                            <i class="fas fa-search"></i> 검색
+                        </button>
+                    </div>
+                    
+                    <div class="customers-table-container">
+                        <table class="data-table" id="customers-table">
+                            <thead>
+                                <tr>
+                                    <th>보호자명</th>
+                                    <th>연락처</th>
+                                    <th>반려동물</th>
+                                    <th>최근 방문일</th>
+                                    <th>방문횟수</th>
+                                    <th>관리</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- 고객 데이터는 자바스크립트로 생성됩니다 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 매출관리 페이지 -->
+                <div class="page" id="sales-page">
+                    <div class="dashboard-header">
+                        <div class="dashboard-title">
+                            <i class="fas fa-chart-line"></i>
+                            <h2>매출 분석</h2>
+                        </div>
+                    </div>
+                    
+                    <div class="period-selector-container">
+                        <div class="period-selectors">
+                            <button class="btn period-btn active" data-period="today">오늘</button>
+                            <button class="btn period-btn" data-period="thisMonth">이번달</button>
+                            <button class="btn period-btn" data-period="lastMonth">지난달</button>
+                            <button class="btn period-btn" data-period="threeMonths">3개월</button>
+                            <button class="btn period-btn" data-period="sixMonths">6개월</button>
+                            <button class="btn period-btn" data-period="year">12개월</button>
+                        </div>
+                        
+                        <div class="staff-selector">
+                            <label for="staff-select">담당자:</label>
+                            <select id="staff-select" class="form-control">
+                                <option value="all">전체</option>
+                                <!-- 담당자 옵션은 자바스크립트로 생성됩니다 -->
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="statistics-cards">
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-won-sign"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h3>총 매출</h3>
+                                <div class="stat-card-value" id="total-sales">0원</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-tasks"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h3>예약 건수</h3>
+                                <div class="stat-card-value" id="total-appointments">0건</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-ban"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h3>취소/노쇼 건수</h3>
+                                <div class="stat-card-value" id="total-canceled">0건</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="chart-container">
+                        <canvas id="sales-chart"></canvas>
+                    </div>
+                    
+                    <div class="sales-table-container">
+                        <h3><i class="fas fa-list"></i> 매출 상세 내역</h3>
+                        <table class="data-table" id="sales-table">
+                            <thead>
+                                <tr>
+                                    <th>날짜</th>
+                                    <th>보호자명</th>
+                                    <th>반려동물</th>
+                                    <th>서비스</th>
+                                    <th>담당자</th>
+                                    <th>결제방식</th>
+                                    <th>금액</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- 매출 데이터는 자바스크립트로 생성됩니다 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 설정 페이지 -->
+                <div class="page" id="settings-page">
+                    <div class="dashboard-header">
+                        <div class="dashboard-title">
+                            <i class="fas fa-cog"></i>
+                            <h2>시스템 설정</h2>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-tabs">
+                        <button class="settings-tab active" data-tab="accounts">계정 관리</button>
+                        <button class="settings-tab" data-tab="shop">매장 설정</button>
+                        <button class="settings-tab" data-tab="services">서비스 관리</button>
+                        <button class="settings-tab" data-tab="notification">알림 설정</button>
+                    </div>
+                    
+                    <div class="settings-content active" id="accounts-tab-content">
+                        <div class="settings-section">
+                            <div class="section-header">
+                                <h3>계정 관리</h3>
+                                <div class="action-buttons">
+                                    <button class="btn btn-primary" id="new-account-btn">
+                                        <i class="fas fa-user-plus"></i> 계정 추가
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="accounts-table-container">
+                                <table class="data-table" id="accounts-table">
+                                    <thead>
+                                        <tr>
+                                            <th>권한</th>
+                                            <th>이메일</th>
+                                            <th>이름</th>
+                                            <th>연락처</th>
+                                            <th>메모</th>
+                                            <th>관리</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- 계정 데이터는 자바스크립트로 생성됩니다 -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-content" id="shop-tab-content">
+                        <div class="settings-section">
+                            <h3>매장 기본 정보</h3>
+                            <form id="shop-settings-form">
+                                <div class="form-group">
+                                    <label for="shop-name">매장명</label>
+                                    <input type="text" id="shop-name" class="form-control" value="펫그룸 미용실">
+                                </div>
+                                <div class="form-group">
+                                    <label for="shop-address">주소</label>
+                                    <input type="text" id="shop-address" class="form-control" value="서울시 강남구 삼성동 123-45">
+                                </div>
+                                <div class="form-group">
+                                    <label for="shop-phone">전화번호</label>
+                                    <input type="text" id="shop-phone" class="form-control" value="02-1234-5678">
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group half">
+                                        <label for="open-time">영업 시작</label>
+                                        <input type="time" id="open-time" class="form-control" value="09:00">
+                                    </div>
+                                    <div class="form-group half">
+                                        <label for="close-time">영업 종료</label>
+                                        <input type="time" id="close-time" class="form-control" value="19:00">
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary">저장</button>
+                            </form>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-content" id="services-tab-content">
+                        <div class="settings-section">
+                            <div class="section-header">
+                                <h3>서비스 관리</h3>
+                                <button class="btn btn-primary" id="add-service-btn">
+                                    <i class="fas fa-plus"></i> 서비스 추가
+                                </button>
+                            </div>
+                            <div class="services-container">
+                                <div class="service-card">
+                                    <div class="service-header">
+                                        <h4>목욕</h4>
+                                        <div class="service-actions">
+                                            <button class="icon-btn edit-service" aria-label="수정">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="icon-btn delete-service" aria-label="삭제">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="service-details">
+                                        <div class="service-duration">
+                                            <i class="far fa-clock"></i> 30분
+                                        </div>
+                                        <div class="service-price">
+                                            <i class="fas fa-won-sign"></i> 30,000원~
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="service-card">
+                                    <div class="service-header">
+                                        <h4>부분+목욕</h4>
+                                        <div class="service-actions">
+                                            <button class="icon-btn edit-service" aria-label="수정">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="icon-btn delete-service" aria-label="삭제">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="service-details">
+                                        <div class="service-duration">
+                                            <i class="far fa-clock"></i> 60분
+                                        </div>
+                                        <div class="service-price">
+                                            <i class="fas fa-won-sign"></i> 40,000원~
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="service-card">
+                                    <div class="service-header">
+                                        <h4>전체미용</h4>
+                                        <div class="service-actions">
+                                            <button class="icon-btn edit-service" aria-label="수정">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="icon-btn delete-service" aria-label="삭제">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="service-details">
+                                        <div class="service-duration">
+                                            <i class="far fa-clock"></i> 120분
+                                        </div>
+                                        <div class="service-price">
+                                            <i class="fas fa-won-sign"></i> 55,000원~
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-content" id="notification-tab-content">
+                        <div class="settings-section">
+                            <h3>알림 설정</h3>
+                            <form id="notification-settings-form">
+                                <div class="form-group checkbox-group">
+                                    <input type="checkbox" id="email-notification" checked>
+                                    <label for="email-notification">이메일 알림</label>
+                                </div>
+                                <div class="form-group checkbox-group">
+                                    <input type="checkbox" id="sms-notification" checked>
+                                    <label for="sms-notification">SMS 알림</label>
+                                </div>
+                                <div class="form-group checkbox-group">
+                                    <input type="checkbox" id="push-notification" checked>
+                                    <label for="push-notification">푸시 알림</label>
+                                </div>
+                                <div class="form-group checkbox-group">
+                                    <input type="checkbox" id="customer-reminder" checked>
+                                    <label for="customer-reminder">고객 예약 전 알림 (24시간 전)</label>
+                                </div>
+                                <button type="submit" class="btn btn-primary">저장</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 모달 - 신규 예약 -->
+    <div class="modal" id="appointment-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>신규 예약</h2>
+                <button class="close" aria-label="닫기">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="appointment-form">
+                    <div class="form-section">
+                        <div class="section-number">1</div>
+                        <h3>보호자 정보</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="guardian-name">보호자 호칭</label>
+                                <input type="text" id="guardian-name" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="guardian-phone">휴대폰</label>
+                                <input type="tel" id="guardian-phone" class="form-control" required>
+                            </div>
+                        </div>
+                        <div class="form-group checkbox-group">
+                            <input type="checkbox" id="alimtalk-consent" checked>
+                            <label for="alimtalk-consent">알림톡 수신 동의</label>
+                        </div>
+                        <div class="form-group">
+                            <label for="guardian-memo">보호자 메모</label>
+                            <textarea id="guardian-memo" class="form-control"></textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="form-section">
+                        <div class="section-number">2</div>
+                        <h3>반려동물 정보</h3>
+                        <div id="pet-containers">
+                            <div class="pet-container">
+                                <div class="form-grid">
+                                    <div class="form-group">
+                                        <label for="pet-name-1">반려동물명</label>
+                                        <input type="text" id="pet-name-1" class="form-control pet-name" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="pet-breed-1">품종</label>
+                                        <input type="text" id="pet-breed-1" class="form-control pet-breed" required>
+                                    </div>
+                                </div>
+                                <div class="form-grid">
+                                    <div class="form-group">
+                                        <label for="pet-weight-1">몸무게(kg)</label>
+                                        <input type="number" id="pet-weight-1" class="form-control pet-weight" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="pet-age-1">나이</label>
+                                        <input type="number" id="pet-age-1" class="form-control pet-age">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="pet-memo-1">반려동물 메모</label>
+                                    <textarea id="pet-memo-1" class="form-control pet-memo"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-secondary" id="add-pet-btn">
+                            <i class="fas fa-plus"></i> 반려동물 추가
+                        </button>
+                    </div>
+                    
+                    <div class="form-section">
+                        <div class="section-number">3</div>
+                        <h3>예약 정보</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="appointment-date">예약 날짜</label>
+                                <input type="date" id="appointment-date" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="staff-assigned">담당자</label>
+                                <select id="staff-assigned" class="form-control" required>
+                                    <!-- 담당자 옵션은 자바스크립트로 생성됩니다 -->
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group time-range">
+                            <label>예약 시간</label>
+                            <div class="time-inputs">
+                                <input type="time" id="appointment-start-time" class="form-control" required>
+                                <span>~</span>
+                                <input type="time" id="appointment-end-time" class="form-control" required>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>서비스</label>
+                            <div class="service-options">
+                                <button type="button" class="btn btn-sm service-btn" data-duration="30" data-service="목욕">목욕</button>
+                                <button type="button" class="btn btn-sm service-btn" data-duration="60" data-service="부분+목욕">부분+목욕</button>
+                                <button type="button" class="btn btn-sm service-btn" data-duration="60" data-service="부분+목욕+얼컷">부분+목욕+얼컷</button>
+                                <button type="button" class="btn btn-sm service-btn" data-duration="120" data-service="전체미용">전체미용</button>
+                                <button type="button" class="btn btn-sm service-btn" data-duration="180" data-service="스포팅">스포팅</button>
+                                <button type="button" class="btn btn-sm service-btn" data-duration="180" data-service="전체가위컷">전체가위컷</button>
+                            </div>
+                            <input type="hidden" id="selected-service" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="appointment-memo">예약 메모</label>
+                            <textarea id="appointment-memo" class="form-control"></textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="form-section">
+                        <div class="section-number">4</div>
+                        <h3>알림톡 선택</h3>
+                        <div class="alimtalk-options">
+                            <div class="form-group checkbox-group">
+                                <input type="radio" name="alimtalk-option" id="alimtalk-default" value="default" checked>
+                                <label for="alimtalk-default">예약 안내(기본)</label>
+                            </div>
+                            <div class="form-group checkbox-group">
+                                <input type="radio" name="alimtalk-option" id="alimtalk-deposit" value="deposit">
+                                <label for="alimtalk-deposit">예약금 안내</label>
+                            </div>
+                            <div class="form-group checkbox-group">
+                                <input type="radio" name="alimtalk-option" id="alimtalk-none" value="none">
+                                <label for="alimtalk-none">예약안내 미발송</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-section">
+                        <div class="section-number">5</div>
+                        <h3>동의서 선택</h3>
+                        <div class="agreement-options">
+                            <div class="form-group checkbox-group">
+                                <input type="checkbox" id="agreement-default">
+                                <label for="agreement-default">미용 동의서</label>
+                            </div>
+                            <div class="form-group checkbox-group">
+                                <input type="checkbox" id="agreement-senior">
+                                <label for="agreement-senior">노령견 미용 동의서</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-buttons">
+                        <button type="submit" class="btn btn-primary">예약 접수</button>
+                        <button type="button" class="btn btn-danger" id="cancel-appointment-btn">취소</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 모달 - 신규 고객 등록 -->
+    <div class="modal" id="customer-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="customer-modal-title">신규 고객 등록</h2>
+                <button class="close" aria-label="닫기">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="customer-form">
+                    <div class="form-section">
+                        <div class="section-number">1</div>
+                        <h3>보호자 정보</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="customer-name">보호자 호칭</label>
+                                <input type="text" id="customer-name" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="customer-phone">휴대폰</label>
+                                <input type="tel" id="customer-phone" class="form-control" required>
+                            </div>
+                        </div>
+                        <div class="form-group checkbox-group">
+                            <input type="checkbox" id="customer-alimtalk-consent" checked>
+                            <label for="customer-alimtalk-consent">알림톡 수신 동의</label>
+                        </div>
+                        <div class="form-group">
+                            <label for="customer-memo">보호자 메모</label>
+                            <textarea id="customer-memo" class="form-control"></textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="form-section">
+                        <div class="section-number">2</div>
+                        <h3>반려동물 정보</h3>
+                        <div id="customer-pet-containers">
+                            <div class="pet-container">
+                                <div class="form-grid">
+                                    <div class="form-group">
+                                        <label for="customer-pet-name-1">반려동물명</label>
+                                        <input type="text" id="customer-pet-name-1" class="form-control customer-pet-name" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="customer-pet-breed-1">품종</label>
+                                        <input type="text" id="customer-pet-breed-1" class="form-control customer-pet-breed" required>
+                                    </div>
+                                </div>
+                                <div class="form-grid">
+                                    <div class="form-group">
+                                        <label for="customer-pet-weight-1">몸무게(kg)</label>
+                                        <input type="number" id="customer-pet-weight-1" class="form-control customer-pet-weight" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="customer-pet-age-1">나이</label>
+                                        <input type="number" id="customer-pet-age-1" class="form-control customer-pet-age">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="customer-pet-memo-1">반려동물 메모</label>
+                                    <textarea id="customer-pet-memo-1" class="form-control customer-pet-memo"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-secondary" id="customer-add-pet-btn">
+                            <i class="fas fa-plus"></i> 반려동물 추가
+                        </button>
+                    </div>
+                    
+                    <div class="form-buttons">
+                        <button type="submit" class="btn btn-primary">저장</button>
+                        <button type="button" class="btn btn-danger" id="cancel-customer-btn">취소</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 모달 - 계정 추가 -->
+    <div class="modal" id="account-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="account-modal-title">계정 추가</h2>
+                <button class="close" aria-label="닫기">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="account-form">
+                    <input type="hidden" id="account-id">
+                    <div class="form-section">
+                        <div class="form-group">
+                            <label>권한</label>
+                            <div class="role-options">
+                                <div class="form-group checkbox-group">
+                                    <input type="radio" name="role" id="role-admin" value="admin">
+                                    <label for="role-admin">관리자</label>
+                                </div>
+                                <div class="form-group checkbox-group">
+                                    <input type="radio" name="role" id="role-staff" value="staff" checked>
+                                    <label for="role-staff">직원</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="account-email">이메일 주소</label>
+                                <input type="email" id="account-email" class="form-control" required>
+                            </div>
+                            <div class="form-group" id="password-group">
+                                <label for="account-password">비밀번호</label>
+                                <input type="password" id="account-password" class="form-control" required>
+                            </div>
+                        </div>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="account-name">이름</label>
+                                <input type="text" id="account-name" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="account-phone">연락처</label>
+                                <input type="tel" id="account-phone" class="form-control">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="account-memo">계정 메모</label>
+                            <textarea id="account-memo" class="form-control"></textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="form-buttons">
+                        <button type="submit" class="btn btn-primary">저장</button>
+                        <button type="button" class="btn btn-danger" id="cancel-account-btn">취소</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 모달 - 매출 등록 -->
+    <div class="modal" id="sale-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>매출 등록</h2>
+                <button class="close" aria-label="닫기">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="sale-form">
+                    <input type="hidden" id="appointment-id">
+                    <div class="form-section">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="sale-customer-name">고객명</label>
+                                <input type="text" id="sale-customer-name" class="form-control" readonly>
+                            </div>
+                            <div class="form-group">
+                                <label for="sale-pet-name">반려동물</label>
+                                <input type="text" id="sale-pet-name" class="form-control" readonly>
+                            </div>
+                        </div>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="sale-service">서비스</label>
+                                <input type="text" id="sale-service" class="form-control" readonly>
+                            </div>
+                            <div class="form-group">
+                                <label for="sale-amount">결제 금액</label>
+                                <input type="number" id="sale-amount" class="form-control" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>결제 방식</label>
+                            <div class="payment-methods">
+                                <div class="form-group checkbox-group">
+                                    <input type="radio" name="payment-method" id="payment-cash" value="현금" checked>
+                                    <label for="payment-cash">현금</label>
+                                </div>
+                                <div class="form-group checkbox-group">
+                                    <input type="radio" name="payment-method" id="payment-card" value="카드">
+                                    <label for="payment-card">카드</label>
+                                </div>
+                                <div class="form-group checkbox-group">
+                                    <input type="radio" name="payment-method" id="payment-transfer" value="계좌이체">
+                                    <label for="payment-transfer">계좌이체</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="sale-memo">메모</label>
+                            <textarea id="sale-memo" class="form-control"></textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="form-buttons">
+                        <button type="submit" class="btn btn-primary">매출 등록</button>
+                        <button type="button" class="btn btn-danger" id="cancel-sale-btn">취소</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+    <script src="https://unpkg.com/@popperjs/core@2"></script>
+    <script src="https://unpkg.com/tippy.js@6"></script>
+    <script src="js/dashboard.js"></script>
+    <script>
+        // Loading animation
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                document.querySelector('.loader').style.opacity = '0';
+                setTimeout(function() {
+                    document.querySelector('.loader').style.display = 'none';
+                }, 500);
+            }, 1500);
+        });
+        
+        // Display current date in header
+        const displayCurrentDate = () => {
+            const now = new Date();
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            document.getElementById('current-date-display').textContent = now.toLocaleDateString('ko-KR', options);
+        };
+        displayCurrentDate();
+        
+        // Initialize tooltips
+        document.addEventListener('DOMContentLoaded', () => {
+            // Sidebar toggle functionality
+            const toggleSidebar = document.getElementById('toggle-sidebar');
+            const wrapper = document.querySelector('.wrapper');
+            
+            if(toggleSidebar) {
+                toggleSidebar.addEventListener('click', () => {
+                    wrapper.classList.toggle('sidebar-collapsed');
+                });
+            }
+            
+            // Mobile sidebar toggle
+            const mobileToggle = document.getElementById('mobile-toggle');
+            
+            if(mobileToggle) {
+                mobileToggle.addEventListener('click', () => {
+                    wrapper.classList.toggle('sidebar-mobile-open');
+                });
+            }
+            
+            // Notification dropdown toggle
+            const notificationBtn = document.getElementById('notification-btn');
+            const notificationDropdown = document.querySelector('.notification-dropdown');
+            
+            if(notificationBtn && notificationDropdown) {
+                notificationBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    notificationDropdown.classList.toggle('show');
+                });
+                
+                document.addEventListener('click', (e) => {
+                    if (!notificationBtn.contains(e.target) && !notificationDropdown.contains(e.target)) {
+                        notificationDropdown.classList.remove('show');
+                    }
+                });
+            }
+            
+            // User dropdown toggle
+            const userImage = document.querySelector('.user-image');
+            const userDropdown = document.querySelector('.user-dropdown');
+            
+            if(userImage && userDropdown) {
+                userImage.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    userDropdown.classList.toggle('show');
+                });
+                
+                document.addEventListener('click', (e) => {
+                    if (!userImage.contains(e.target) && !userDropdown.contains(e.target)) {
+                        userDropdown.classList.remove('show');
+                    }
+                });
+            }
+            
+            // Settings tabs functionality
+            const settingsTabs = document.querySelectorAll('.settings-tab');
+            const settingsContents = document.querySelectorAll('.settings-content');
+            
+            if(settingsTabs.length) {
+                settingsTabs.forEach(tab => {
+                    tab.addEventListener('click', () => {
+                        // Remove active class from all tabs
+                        settingsTabs.forEach(t => t.classList.remove('active'));
+                        
+                        // Add active class to clicked tab
+                        tab.classList.add('active');
+                        
+                        // Hide all content
+                        settingsContents.forEach(content => {
+                            content.classList.remove('active');
+                        });
+                        
+                        // Show selected content
+                        const tabId = tab.getAttribute('data-tab');
+                        document.getElementById(`${tabId}-tab-content`).classList.add('active');
+                    });
+                });
+            }
+            
+            // Initialize Tippy.js tooltips
+            tippy('[data-tippy-content]', {
+                placement: 'right',
+                animation: 'scale',
+                theme: 'petgroom'
+            });
+            
+            // Example Chart.js initialization for sales chart
+            const salesChartCtx = document.getElementById('sales-chart');
+            
+            if(salesChartCtx) {
+                new Chart(salesChartCtx, {
+                    type: 'line',
+                    data: {
+                        labels: ['1일', '2일', '3일', '4일', '5일', '6일', '7일', '8일', '9일', '10일'],
+                        datasets: [{
+                            label: '매출',
+                            data: [150000, 230000, 180000, 280000, 320000, 190000, 250000, 310000, 280000, 330000],
+                            borderColor: '#4e73df',
+                            backgroundColor: 'rgba(78, 115, 223, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        if (context.parsed.y !== null) {
+                                            label += new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(context.parsed.y);
+                                        }
+                                        return label;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                ticks: {
+                                    callback: function(value) {
+                                        return value.toLocaleString() + '원';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
