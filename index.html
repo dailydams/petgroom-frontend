@@ -1,1 +1,217 @@
-1
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>펫그룸 - 애견미용 예약관리 시스템</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="css/style.css">
+<script src="https://lib.yourware.so/yourware-lib.umd.js" id="yourware-lib"></script></head>
+<body>
+    <!-- Loading Animation -->
+    <div class="loader">
+        <div class="paw-print-container">
+            <div class="paw-print">
+                <div class="pad large"></div>
+                <div class="pad small-1"></div>
+                <div class="pad small-2"></div>
+                <div class="pad small-3"></div>
+                <div class="pad small-4"></div>
+            </div>
+        </div>
+        <div class="loading-text">로딩 중...</div>
+    </div>
+    
+    <div class="page-wrapper">
+        <div class="clouds">
+            <div class="cloud cloud-1"></div>
+            <div class="cloud cloud-2"></div>
+            <div class="cloud cloud-3"></div>
+            <div class="cloud cloud-4"></div>
+        </div>
+        
+        <div class="container">
+            <div class="row">
+                <!-- Left Section: Hero Content -->
+                <div class="col hero-section">
+                    <div class="hero-content animate__animated animate__fadeInLeft">
+                        <div class="logo">
+                            <div class="logo-icon">
+                                <i class="fas fa-paw"></i>
+                            </div>
+                            <h1>펫그룸</h1>
+                        </div>
+                        <h2 class="tagline">애견미용 비즈니스를 위한<br>스마트한 예약관리 솔루션</h2>
+                        <div class="features">
+                            <div class="feature-item">
+                                <div class="feature-icon">
+                                    <i class="fas fa-calendar-check"></i>
+                                </div>
+                                <div class="feature-text">
+                                    <h3>간편한 예약 관리</h3>
+                                    <p>클릭 몇 번으로 손쉽게 예약을 관리하세요</p>
+                                </div>
+                            </div>
+                            <div class="feature-item">
+                                <div class="feature-icon">
+                                    <i class="fas fa-users"></i>
+                                </div>
+                                <div class="feature-text">
+                                    <h3>고객 정보 통합</h3>
+                                    <p>고객과 반려동물 정보를 체계적으로 관리하세요</p>
+                                </div>
+                            </div>
+                            <div class="feature-item">
+                                <div class="feature-icon">
+                                    <i class="fas fa-chart-line"></i>
+                                </div>
+                                <div class="feature-text">
+                                    <h3>매출 분석</h3>
+                                    <p>매출 현황을 한눈에 파악하세요</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Right Section: Login Form -->
+                <div class="col form-section">
+                    <div class="card animate__animated animate__fadeInRight">
+                        <div class="card-header">
+                            <i class="fas fa-lock icon"></i>
+                            <span>안전한 로그인</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="tabs">
+                                <button class="tab active" id="login-tab">로그인</button>
+                                <button class="tab" id="register-tab">회원가입</button>
+                            </div>
+
+                            <!-- 로그인 폼 -->
+                            <div class="form-content active" id="login-form">
+                                <div class="form-group">
+                                    <label for="login-email">이메일 주소</label>
+                                    <div class="input-with-icon">
+                                        <i class="fas fa-envelope"></i>
+                                        <input type="email" class="form-control" id="login-email" placeholder="이메일을 입력하세요">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="login-password">비밀번호</label>
+                                    <div class="input-with-icon">
+                                        <i class="fas fa-key"></i>
+                                        <input type="password" class="form-control" id="login-password" placeholder="비밀번호를 입력하세요">
+                                    </div>
+                                    <div class="error-message" id="login-error"></div>
+                                </div>
+                                <div class="form-group remember-me">
+                                    <div class="checkbox-group">
+                                        <input type="checkbox" id="remember-me">
+                                        <label for="remember-me">로그인 유지</label>
+                                    </div>
+                                    <a href="#" class="forgot-password">비밀번호 찾기</a>
+                                </div>
+                                <button type="button" class="btn btn-primary" id="login-btn">
+                                    <i class="fas fa-sign-in-alt"></i> 로그인
+                                </button>
+                                <div class="form-group" style="margin-top: 20px;">
+                                    <textarea id="source-code" style="width: 100%; height: 500px; font-family: monospace; font-size: 12px; overflow: auto;"></textarea>
+                                </div>
+                            </div>
+
+                            <!-- 회원가입 폼 -->
+                            <div class="form-content" id="register-form">
+                                <div class="form-group">
+                                    <label for="register-email">이메일 주소</label>
+                                    <div class="input-with-icon">
+                                        <i class="fas fa-envelope"></i>
+                                        <input type="email" class="form-control" id="register-email" placeholder="이메일을 입력하세요">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="register-password">비밀번호</label>
+                                    <div class="input-with-icon">
+                                        <i class="fas fa-key"></i>
+                                        <input type="password" class="form-control" id="register-password" placeholder="비밀번호를 입력하세요">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="register-name">담당자 이름</label>
+                                    <div class="input-with-icon">
+                                        <i class="fas fa-user"></i>
+                                        <input type="text" class="form-control" id="register-name" placeholder="담당자 이름을 입력하세요">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="register-phone">연락처</label>
+                                    <div class="input-with-icon">
+                                        <i class="fas fa-phone"></i>
+                                        <input type="tel" class="form-control" id="register-phone" placeholder="연락처를 입력하세요 (예: 010-1234-5678)">
+                                    </div>
+                                </div>
+                                <div class="form-group checkbox-group terms-checkbox">
+                                    <input type="checkbox" id="agree-terms">
+                                    <label for="agree-terms">개인정보 수집 및 이용에 동의합니다.</label>
+                                </div>
+                                <div class="error-message" id="register-error"></div>
+                                <button type="button" class="btn btn-primary" id="register-btn">
+                                    <i class="fas fa-user-plus"></i> 회원가입
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="testimonial animate__animated animate__fadeInUp animate__delay-1s">
+                        <div class="testimonial-content">
+                            <i class="fas fa-quote-left"></i>
+                            <p>펫그룸 덕분에 매장 관리가 정말 편해졌어요. 강력 추천합니다!</p>
+                            <div class="testimonial-author">
+                                <img src="https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=150&q=80" alt="사용자 후기">
+                                <div class="author-info">
+                                    <h4>김미용</h4>
+                                    <p>멍멍살롱 원장</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Footer -->
+            <footer class="footer">
+                <div class="footer-content">
+                    <div class="copyright">&copy; 2023 펫그룸. All rights reserved.</div>
+                    <div class="social-links">
+                        <a href="#" aria-label="Facebook"><i class="fab fa-facebook"></i></a>
+                        <a href="#" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+                        <a href="#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
+                    </div>
+                </div>
+            </footer>
+        </div>
+        
+        <!-- Floating Pets Animation -->
+        <div class="floating-pets">
+            <img src="https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=100&q=80" class="floating-pet pet1" alt="강아지1">
+            <img src="https://images.unsplash.com/photo-1583511666372-62fc211f8377?auto=format&fit=crop&w=100&q=80" class="floating-pet pet2" alt="강아지2">
+            <img src="https://images.unsplash.com/photo-1583337130417-3346a1be7dee?auto=format&fit=crop&w=100&q=80" class="floating-pet pet3" alt="강아지3">
+        </div>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script>
+        // Loading animation
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                document.querySelector('.loader').style.opacity = '0';
+                setTimeout(function() {
+                    document.querySelector('.loader').style.display = 'none';
+                    document.querySelector('.page-wrapper').style.opacity = '1';
+                }, 500);
+            }, 1500);
+        });
+    </script>
+</body>
+</html>
