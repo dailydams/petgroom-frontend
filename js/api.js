@@ -1,6 +1,6 @@
 // API 설정
 const API_CONFIG = {
-  BASE_URL: 'https://petgroom-api.<YOUR_CLOUDFLARE_ACCOUNT>.workers.dev',
+  BASE_URL: 'https://petgroom-api.forzamin12.workers.dev',
   TIMEOUT: 30000, // 30초
   RETRY_COUNT: 3,
   RETRY_DELAY: 1000, // 1초
