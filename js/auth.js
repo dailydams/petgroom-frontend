@@ -16,28 +16,13 @@ document.addEventListener('DOMContentLoaded', async function() {
     const loginForm = document.getElementById('login-form');
     const registerForm = document.getElementById('register-form');
     
-    // 코드 탭 관련 요소 (있는 경우에만)
-    const codeTab = document.getElementById('code-tab');
-    const codeForm = document.getElementById('code-form');
-    
-    // 소스코드 영역이 있으면 자동으로 소스코드 로드
-    const sourceCodeArea = document.getElementById('source-code');
-    if (sourceCodeArea) {
-        loadSourceCode();
-    }
-    
     // 로그인 탭 클릭
     loginTab.addEventListener('click', function() {
         loginTab.classList.add('active');
         registerTab.classList.remove('active');
         loginForm.classList.add('active');
         registerForm.classList.remove('active');
-        
-        if (codeTab) {
-            codeTab.classList.remove('active');
-            if (codeForm) codeForm.classList.remove('active');
-        }
-    });
+            });
     
     // 회원가입 탭 클릭
     registerTab.addEventListener('click', function() {
@@ -51,21 +36,6 @@ document.addEventListener('DOMContentLoaded', async function() {
             if (codeForm) codeForm.classList.remove('active');
         }
     });
-    
-    // 코드 탭 클릭 (있는 경우에만)
-    if (codeTab && codeForm) {
-        codeTab.addEventListener('click', function() {
-            codeTab.classList.add('active');
-            loginTab.classList.remove('active');
-            registerTab.classList.remove('active');
-            codeForm.classList.add('active');
-            loginForm.classList.remove('active');
-            registerForm.classList.remove('active');
-            
-            // 소스코드 로드
-            loadSourceCode();
-        });
-    }
     
     // 로그인 기능
     const loginBtn = document.getElementById('login-btn');
@@ -201,53 +171,4 @@ function isValidEmail(email) {
 function isValidPhone(phone) {
     // 하이픈이 있든 없든 상관없는 유효성 검사
     return /^01[016789][-\s]?\d{3,4}[-\s]?\d{4}$/.test(phone);
-}
-
-// 소스코드 로드 함수 (기존과 동일하게 유지)
-async function loadSourceCode() {
-    const sourceCodeArea = document.getElementById('source-code');
-    if (sourceCodeArea) {
-        sourceCodeArea.value = "로딩 중...";
-        
-        try {
-            // 모든 파일 경로
-            const files = [
-                // HTML 파일
-                { path: 'index.html', type: '-- HTML --' },
-                { path: 'dashboard.html', type: '-- HTML --' },
-                
-                // CSS 파일
-                { path: 'css/style.css', type: '-- CSS --' },
-                { path: 'css/dashboard.css', type: '-- CSS --' },
-                
-                // JavaScript 파일
-                { path: 'js/auth.js', type: '-- JavaScript --' },
-                { path: 'js/api.js', type: '-- JavaScript --' },
-                { path: 'js/components.js', type: '-- JavaScript --' },
-                { path: 'js/dashboard.js', type: '-- JavaScript --' },
-                
-                // 백엔드 파일
-                { path: 'worker/index.js', type: '-- Backend (Cloudflare Worker) --' },
-                { path: 'worker/wrangler.toml', type: '-- Config --' }
-            ];
-            
-            let allCode = '';
-            
-            for (const file of files) {
-                try {
-                    const response = await fetch(file.path);
-                    const content = await response.text();
-                    
-                    allCode += `\n\n/* ==================== ${file.type} ${file.path} ==================== */\n\n`;
-                    allCode += content;
-                } catch (err) {
-                    allCode += `\n\n/* Error loading ${file.path}: ${err.message} */\n\n`;
-                }
-            }
-            
-            sourceCodeArea.value = allCode;
-        } catch (error) {
-            sourceCodeArea.value = `소스코드 로딩 오류: ${error.message}`;
-        }
-    }
 }
