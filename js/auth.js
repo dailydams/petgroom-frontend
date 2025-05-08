@@ -43,7 +43,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     const loginBtn = document.getElementById('login-btn');
     const loginError = document.getElementById('login-error');
     
-    loginBtn.addEventListener('click', async function() {
+    // 로그인 처리 함수
+    async function handleLogin() {
         const email = document.getElementById('login-email').value;
         const password = document.getElementById('login-password').value;
         
@@ -73,7 +74,24 @@ document.addEventListener('DOMContentLoaded', async function() {
                 loginError.style.display = 'block';
             }
         }
-    });
+    }
+    
+    // 로그인 버튼 클릭 이벤트
+    loginBtn.addEventListener('click', handleLogin);
+    
+    // 로그인 폼에서 엔터키 입력 시 로그인 처리
+    const loginEmailInput = document.getElementById('login-email');
+    const loginPasswordInput = document.getElementById('login-password');
+    
+    function handleEnterKeyOnLogin(event) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            handleLogin();
+        }
+    }
+    
+    if (loginEmailInput) loginEmailInput.addEventListener('keypress', handleEnterKeyOnLogin);
+    if (loginPasswordInput) loginPasswordInput.addEventListener('keypress', handleEnterKeyOnLogin);
     
     // 회원가입 기능
     const registerBtn = document.getElementById('register-btn');
