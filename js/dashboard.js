@@ -2418,57 +2418,6 @@ async function renderAccountsTable() {
     }
 }
 
-// 매출 차트 업데이트
-function updateSalesChart(chartData) {
-    const ctx = document.getElementById('salesChart').getContext('2d');
-    
-    try {
-        // 기존 차트가 있으면 파괴
-        if (salesChart) {
-            salesChart.destroy();
-        }
-        
-        // 새 차트 생성
-        salesChart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: chartData.labels,
-                datasets: [{
-                    label: '매출액 (원)',
-                    data: chartData.data,
-                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                    borderColor: 'rgba(75, 192, 192, 1)',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            callback: function(value) {
-                                return value.toLocaleString() + '원';
-                            }
-                        }
-                    }
-                },
-                plugins: {
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return context.parsed.y.toLocaleString() + '원';
-                            }
-                        }
-                    }
-                }
-            }
-        });
-    } catch (error) {
-        console.error('매출 차트 업데이트 중 오류:', error);
-        throw error;
-    }
-}
-
 export default {
     // 필요한 경우 외부에서 접근할 함수 노출
 };
