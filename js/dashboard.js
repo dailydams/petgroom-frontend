@@ -1481,21 +1481,97 @@ async function openAppointmentModal(time = null, staffId = null, date = null) {
                             guardianNameInput.value = customer.name;
                             guardianPhoneInput.value = customer.phone;
                             
-                            // 고객의 반려동물 정보도 채우기
-                            if (customer.pets && customer.pets.length > 0) {
+                            // 고객의 반려동물이 2마리 이상인 경우 선택 UI 표시
+                            if (customer.pets && customer.pets.length > 1) {
+                                // 기존 반려동물 컨테이너 초기화
                                 document.getElementById('pet-containers').innerHTML = '';
                                 
+                                // 기존 선택 UI가 있으면 제거
+                                const existingSelectionContainer = document.querySelector('.pet-selection-container');
+                                if (existingSelectionContainer) {
+                                    existingSelectionContainer.remove();
+                                }
+                                
+                                // 반려동물 선택 UI 생성
+                                const petSelectionContainer = document.createElement('div');
+                                petSelectionContainer.className = 'pet-selection-container';
+                                petSelectionContainer.innerHTML = `
+                                    <p>선택할 반려동물:</p>
+                                    <div class="pet-selection-list"></div>
+                                `;
+                                
+                                // 각 반려동물에 대한 옵션 추가
+                                const petSelectionList = petSelectionContainer.querySelector('.pet-selection-list');
+                                
                                 customer.pets.forEach((pet, index) => {
-                                    addPetForm();
-                                    const petContainers = document.querySelectorAll('#pet-containers .pet-container');
-                                    const container = petContainers[index];
+                                    const petOption = document.createElement('div');
+                                    petOption.className = 'pet-option';
+                                    petOption.innerHTML = `
+                                        <input type="checkbox" id="pet-select-${index}" class="pet-select-checkbox" value="${index}" ${index === 0 ? 'checked' : ''}>
+                                        <label for="pet-select-${index}">
+                                            ${pet.name} (${pet.breed}, ${pet.weight}kg${pet.age ? ', ' + pet.age + '세' : ''})
+                                        </label>
+                                    `;
                                     
-                                    container.querySelector('.pet-name').value = pet.name || '';
-                                    container.querySelector('.pet-breed').value = pet.breed || '';
-                                    container.querySelector('.pet-weight').value = pet.weight || '';
-                                    container.querySelector('.pet-age').value = pet.age || '';
-                                    container.querySelector('.pet-memo').value = pet.memo || '';
+                                    petSelectionList.appendChild(petOption);
                                 });
+                                
+                                // 선택 완료 버튼 추가
+                                const confirmSelectionBtn = document.createElement('button');
+                                confirmSelectionBtn.type = 'button';
+                                confirmSelectionBtn.className = 'btn primary-btn pet-select-confirm';
+                                confirmSelectionBtn.textContent = '선택 완료';
+                                
+                                // 선택 완료 버튼 클릭 이벤트
+                                confirmSelectionBtn.addEventListener('click', () => {
+                                    // 선택된 반려동물 인덱스 가져오기
+                                    const selectedPetIndexes = Array.from(
+                                        petSelectionContainer.querySelectorAll('.pet-select-checkbox:checked')
+                                    ).map(checkbox => parseInt(checkbox.value));
+                                    
+                                    // 선택된 반려동물이 없는 경우
+                                    if (selectedPetIndexes.length === 0) {
+                                        ToastNotification.show('최소 한 마리 이상의 반려동물을 선택해주세요.', 'error');
+                                        return;
+                                    }
+                                    
+                                    // 선택된 반려동물 정보만 추가
+                                    document.getElementById('pet-containers').innerHTML = '';
+                                    selectedPetIndexes.forEach((petIndex, i) => {
+                                        const selectedPet = customer.pets[petIndex];
+                                        addPetForm();
+                                        const petContainers = document.querySelectorAll('#pet-containers .pet-container');
+                                        const container = petContainers[i];
+                                        
+                                        container.querySelector('.pet-name').value = selectedPet.name || '';
+                                        container.querySelector('.pet-breed').value = selectedPet.breed || '';
+                                        container.querySelector('.pet-weight').value = selectedPet.weight || '';
+                                        container.querySelector('.pet-age').value = selectedPet.age || '';
+                                        container.querySelector('.pet-memo').value = selectedPet.memo || '';
+                                    });
+                                    
+                                    // 선택 UI 제거
+                                    petSelectionContainer.remove();
+                                });
+                                
+                                petSelectionContainer.appendChild(confirmSelectionBtn);
+                                
+                                // 폼에 선택 UI 추가
+                                const guardianInfoContainer = guardianPhoneInput.closest('.form-group').parentElement;
+                                guardianInfoContainer.parentElement.insertBefore(petSelectionContainer, guardianInfoContainer.nextSibling);
+                            } else if (customer.pets && customer.pets.length === 1) {
+                                // 반려동물이 한 마리인 경우 기존 방식으로 표시
+                                document.getElementById('pet-containers').innerHTML = '';
+                                
+                                addPetForm();
+                                const petContainers = document.querySelectorAll('#pet-containers .pet-container');
+                                const container = petContainers[0];
+                                
+                                container.querySelector('.pet-name').value = customer.pets[0].name || '';
+                                container.querySelector('.pet-breed').value = customer.pets[0].breed || '';
+                                container.querySelector('.pet-weight').value = customer.pets[0].weight || '';
+                                container.querySelector('.pet-age').value = customer.pets[0].age || '';
+                                container.querySelector('.pet-memo').value = customer.pets[0].memo || '';
                             }
                             
                             // 검색 결과 숨기기
@@ -1530,21 +1606,91 @@ async function openAppointmentModal(time = null, staffId = null, date = null) {
                     // 고객 정보로 폼 채우기
                     guardianNameInput.value = customer.name;
                     
-                    // 고객의 반려동물 정보도 채우기
-                    if (customer.pets && customer.pets.length > 0) {
+                    // 고객의 반려동물이 2마리 이상인 경우 선택 UI 표시
+                    if (customer.pets && customer.pets.length > 1) {
+                        // 기존 반려동물 컨테이너 초기화
                         document.getElementById('pet-containers').innerHTML = '';
                         
+                        // 반려동물 선택 UI 생성
+                        const petSelectionContainer = document.createElement('div');
+                        petSelectionContainer.className = 'pet-selection-container';
+                        petSelectionContainer.innerHTML = `
+                            <p>선택할 반려동물:</p>
+                            <div class="pet-selection-list"></div>
+                        `;
+                        
+                        // 각 반려동물에 대한 옵션 추가
+                        const petSelectionList = petSelectionContainer.querySelector('.pet-selection-list');
+                        
                         customer.pets.forEach((pet, index) => {
-                            addPetForm();
-                            const petContainers = document.querySelectorAll('#pet-containers .pet-container');
-                            const container = petContainers[index];
+                            const petOption = document.createElement('div');
+                            petOption.className = 'pet-option';
+                            petOption.innerHTML = `
+                                <input type="checkbox" id="pet-select-${index}" class="pet-select-checkbox" value="${index}" ${index === 0 ? 'checked' : ''}>
+                                <label for="pet-select-${index}">
+                                    ${pet.name} (${pet.breed}, ${pet.weight}kg${pet.age ? ', ' + pet.age + '세' : ''})
+                                </label>
+                            `;
                             
-                            container.querySelector('.pet-name').value = pet.name || '';
-                            container.querySelector('.pet-breed').value = pet.breed || '';
-                            container.querySelector('.pet-weight').value = pet.weight || '';
-                            container.querySelector('.pet-age').value = pet.age || '';
-                            container.querySelector('.pet-memo').value = pet.memo || '';
+                            petSelectionList.appendChild(petOption);
                         });
+                        
+                        // 선택 완료 버튼 추가
+                        const confirmSelectionBtn = document.createElement('button');
+                        confirmSelectionBtn.type = 'button';
+                        confirmSelectionBtn.className = 'btn primary-btn pet-select-confirm';
+                        confirmSelectionBtn.textContent = '선택 완료';
+                        
+                        // 선택 완료 버튼 클릭 이벤트
+                        confirmSelectionBtn.addEventListener('click', () => {
+                            // 선택된 반려동물 인덱스 가져오기
+                            const selectedPetIndexes = Array.from(
+                                petSelectionContainer.querySelectorAll('.pet-select-checkbox:checked')
+                            ).map(checkbox => parseInt(checkbox.value));
+                            
+                            // 선택된 반려동물이 없는 경우
+                            if (selectedPetIndexes.length === 0) {
+                                ToastNotification.show('최소 한 마리 이상의 반려동물을 선택해주세요.', 'error');
+                                return;
+                            }
+                            
+                            // 선택된 반려동물 정보만 추가
+                            document.getElementById('pet-containers').innerHTML = '';
+                            selectedPetIndexes.forEach((petIndex, i) => {
+                                const selectedPet = customer.pets[petIndex];
+                                addPetForm();
+                                const petContainers = document.querySelectorAll('#pet-containers .pet-container');
+                                const container = petContainers[i];
+                                
+                                container.querySelector('.pet-name').value = selectedPet.name || '';
+                                container.querySelector('.pet-breed').value = selectedPet.breed || '';
+                                container.querySelector('.pet-weight').value = selectedPet.weight || '';
+                                container.querySelector('.pet-age').value = selectedPet.age || '';
+                                container.querySelector('.pet-memo').value = selectedPet.memo || '';
+                            });
+                            
+                            // 선택 UI 제거
+                            petSelectionContainer.remove();
+                        });
+                        
+                        petSelectionContainer.appendChild(confirmSelectionBtn);
+                        
+                        // 폼에 선택 UI 추가
+                        const guardianInfoContainer = guardianPhoneInput.closest('.form-group').parentElement;
+                        guardianInfoContainer.parentElement.insertBefore(petSelectionContainer, guardianInfoContainer.nextSibling);
+                    } else if (customer.pets && customer.pets.length === 1) {
+                        // 반려동물이 한 마리인 경우 기존 방식으로 표시
+                        document.getElementById('pet-containers').innerHTML = '';
+                        
+                        addPetForm();
+                        const petContainers = document.querySelectorAll('#pet-containers .pet-container');
+                        const container = petContainers[0];
+                        
+                        container.querySelector('.pet-name').value = customer.pets[0].name || '';
+                        container.querySelector('.pet-breed').value = customer.pets[0].breed || '';
+                        container.querySelector('.pet-weight').value = customer.pets[0].weight || '';
+                        container.querySelector('.pet-age').value = customer.pets[0].age || '';
+                        container.querySelector('.pet-memo').value = customer.pets[0].memo || '';
                     }
                 }
             } catch (error) {
