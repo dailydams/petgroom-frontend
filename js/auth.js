@@ -15,6 +15,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     const registerTab = document.getElementById('register-tab');
     const loginForm = document.getElementById('login-form');
     const registerForm = document.getElementById('register-form');
+    const codeTab = document.getElementById('code-tab');
+    const codeForm = document.getElementById('code-form');
     
     // 로그인 탭 클릭
     loginTab.addEventListener('click', function() {
@@ -31,7 +33,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         registerForm.classList.add('active');
         loginForm.classList.remove('active');
         
-        if (codeTab) {
+        if (codeTab && codeTab.classList) {
             codeTab.classList.remove('active');
             if (codeForm) codeForm.classList.remove('active');
         }
