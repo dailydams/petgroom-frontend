@@ -12,6 +12,9 @@ let currentView = 'day'; // day, week, month
 let selectedStaffId = 'all';
 let isLoading = false;
 
+// 매출 차트
+let salesChart = null;
+
 // DOM이 로드된 후 실행
 document.addEventListener('DOMContentLoaded', async () => {
     try {
@@ -999,7 +1002,24 @@ async function loadWeekView() {
         const weekStart = new Date(currentDate);
         weekStart.setDate(weekStart.getDate() - weekStart.getDay());
         
-        // 7일 표시
+        // 주간 종료일 (토요일)
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekEnd.getDate() + 6);
+        
+        // 한 번에 주간 데이터 가져오기
+        const startDateStr = formatDate(weekStart);
+        const endDateStr = formatDate(weekEnd);
+        
+        // 로딩 표시
+        const weekLoading = document.createElement('div');
+        weekLoading.className = 'week-loading';
+        weekLoading.textContent = '주간 일정을 불러오는 중...';
+        weekBody.appendChild(weekLoading);
+        
+        // 7일간의 헤더 미리 생성
+        const dayHeaders = [];
+        const dayColumns = [];
+        
         for (let i = 0; i < 7; i++) {
             const date = new Date(weekStart);
             date.setDate(date.getDate() + i);
@@ -1022,6 +1042,7 @@ async function loadWeekView() {
                 dayHeader.style.color = 'white';
             }
             
+            dayHeaders.push(dayHeader);
             weekHeader.appendChild(dayHeader);
             
             // 날짜 열 추가
@@ -1046,18 +1067,46 @@ async function loadWeekView() {
                 loadCalendar();
             });
             
+            dayColumns.push(dayColumn);
             weekBody.appendChild(dayColumn);
+        }
+        
+        // 한 번의 API 호출로 주간 데이터 가져오기
+        try {
+            // 월간 데이터를 가져와서 필터링하는 방식으로 최적화
+            const year = weekStart.getFullYear();
+            const month = weekStart.getMonth() + 1;
             
-            // 해당 날짜의 예약 로드
-            try {
-                const response = await API.getAppointmentsByDate(dateStr, selectedStaffId);
-                const dayAppointments = response.appointments || [];
+            const response = await API.getAppointmentsByMonth(year, month, selectedStaffId);
+            const weekAppointments = response.appointments || [];
+            
+            // 로딩 표시 제거
+            weekBody.removeChild(weekLoading);
+            
+            // 주별로 필터링 (같은 달이 아닌 날짜도 고려)
+            const startTime = weekStart.getTime();
+            const endTime = weekEnd.getTime() + 86400000; // 하루 추가
+            
+            // 날짜별로 예약 데이터 그룹화
+            const appointmentsByDate = {};
+            
+            weekAppointments.forEach(app => {
+                const appDate = new Date(app.date);
+                const appTime = appDate.getTime();
                 
-                // appointments 배열 업데이트
-                appointments = appointments.filter(app => app.date !== dateStr);
-                appointments = [...appointments, ...dayAppointments];
+                if (appTime >= startTime && appTime < endTime) {
+                    if (!appointmentsByDate[app.date]) {
+                        appointmentsByDate[app.date] = [];
+                    }
+                    appointmentsByDate[app.date].push(app);
+                }
+            });
+            
+            // 예약 데이터 렌더링
+            dayColumns.forEach((dayColumn, index) => {
+                const dateStr = dayColumn.dataset.date;
+                const dayAppointments = appointmentsByDate[dateStr] || [];
                 
-                // 예약 표시
                 dayAppointments.forEach(app => {
                     const appointmentElement = document.createElement('div');
                     appointmentElement.className = `week-appointment status-${app.status}`;
@@ -1075,9 +1124,16 @@ async function loadWeekView() {
                     
                     dayColumn.appendChild(appointmentElement);
                 });
-            } catch (error) {
-                console.error(`${dateStr} 예약 로드 중 오류:`, error);
-            }
+            });
+            
+        } catch (error) {
+            console.error(`주간 예약 로드 중 오류:`, error);
+            weekBody.removeChild(weekLoading);
+            
+            const errorMsg = document.createElement('div');
+            errorMsg.className = 'error-message';
+            errorMsg.textContent = '주간 일정을 불러오는 중 오류가 발생했습니다.';
+            weekBody.appendChild(errorMsg);
         }
     } catch (error) {
         console.error('주간 예약 조회 중 오류:', error);
@@ -2359,6 +2415,57 @@ async function renderAccountsTable() {
         LoadingIndicator.hide();
         console.error('계정 목록 로드 중 오류:', error);
         ToastNotification.show(`계정 정보를 불러오는 중 오류가 발생했습니다: ${error.message}`, 'error');
+    }
+}
+
+// 매출 차트 업데이트
+function updateSalesChart(chartData) {
+    const ctx = document.getElementById('salesChart').getContext('2d');
+    
+    try {
+        // 기존 차트가 있으면 파괴
+        if (salesChart) {
+            salesChart.destroy();
+        }
+        
+        // 새 차트 생성
+        salesChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: chartData.labels,
+                datasets: [{
+                    label: '매출액 (원)',
+                    data: chartData.data,
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return value.toLocaleString() + '원';
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.parsed.y.toLocaleString() + '원';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    } catch (error) {
+        console.error('매출 차트 업데이트 중 오류:', error);
+        throw error;
     }
 }
 
