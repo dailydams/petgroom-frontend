@@ -1596,3 +1596,54 @@ header {
     overflow: hidden;
     text-overflow: ellipsis;
 }
+
+/* 반려동물 선택 UI */
+.pet-selection-container {
+    background-color: #f5f8ff;
+    border: 1px solid #dde4ff;
+    border-radius: 8px;
+    padding: 16px;
+    margin: 16px 0;
+}
+
+.pet-selection-container p {
+    font-weight: bold;
+    margin-bottom: 12px;
+    color: #4a5568;
+}
+
+.pet-selection-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.pet-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.pet-option:hover {
+    background-color: #edf2ff;
+}
+
+.pet-option label {
+    flex: 1;
+    cursor: pointer;
+}
+
+.pet-option input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.pet-select-confirm {
+    width: 100%;
+    margin-top: 8px;
+}
