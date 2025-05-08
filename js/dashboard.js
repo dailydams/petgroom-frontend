@@ -405,6 +405,50 @@ function initAppointmentEvents() {
     
     // 반려동물 추가 버튼
     document.getElementById('add-pet-btn').addEventListener('click', addPetForm);
+    
+    // 고객 검색 결과 컨테이너 스타일 추가
+    const styleEl = document.createElement('style');
+    styleEl.textContent = `
+        .search-results-container {
+            position: absolute;
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 100;
+            margin-top: 5px;
+        }
+        
+        .search-result-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .search-result-item:hover {
+            background-color: #f5f8ff;
+        }
+        
+        .customer-name {
+            font-weight: bold;
+        }
+        
+        .customer-phone {
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        .customer-pets {
+            color: #888;
+            font-size: 0.8em;
+            margin-top: 3px;
+        }
+    `;
+    
+    document.head.appendChild(styleEl);
 }
 
 // 고객관리 페이지 이벤트
@@ -1052,19 +1096,8 @@ async function loadWeekView() {
             
             // 날짜 클릭 시 해당 날짜의 일간 뷰로 이동
             dayColumn.addEventListener('click', () => {
-                currentDate = new Date(date);
-                currentView = 'day';
-                
-                // 뷰 버튼 업데이트
-                document.querySelectorAll('.view-btn').forEach(btn => {
-                    btn.classList.remove('active');
-                    if (btn.dataset.view === 'day') {
-                        btn.classList.add('active');
-                    }
-                });
-                
-                updateCalendarHeader();
-                loadCalendar();
+                // 날짜 클릭 시 해당 날짜의 예약 모달 바로 표시
+                openAppointmentModal(null, null, date);
             });
             
             dayColumns.push(dayColumn);
@@ -1235,19 +1268,8 @@ async function loadMonthView() {
             
             // 날짜 클릭 시 해당 날짜의 일간 뷰로 이동
             dayElement.addEventListener('click', () => {
-                currentDate = new Date(dayDate);
-                currentView = 'day';
-                
-                // 뷰 버튼 업데이트
-                document.querySelectorAll('.view-btn').forEach(btn => {
-                    btn.classList.remove('active');
-                    if (btn.dataset.view === 'day') {
-                        btn.classList.add('active');
-                    }
-                });
-                
-                updateCalendarHeader();
-                loadCalendar();
+                // 날짜 클릭 시 해당 날짜의 예약 모달 바로 표시
+                openAppointmentModal(null, null, dayDate);
             });
             
             dayElements.push({
@@ -1332,14 +1354,19 @@ async function loadMonthView() {
 }
 
 // 예약 모달 열기
-async function openAppointmentModal(time = null, staffId = null) {
+async function openAppointmentModal(time = null, staffId = null, date = null) {
     try {
         const modal = document.getElementById('appointment-modal');
         const form = document.getElementById('appointment-form');
         form.reset();
         
         // 날짜 및 시간 초기화
-        document.getElementById('appointment-date').value = formatDate(currentDate);
+        if (date) {
+            // 전달받은 날짜가 있으면 해당 날짜로 설정
+            document.getElementById('appointment-date').value = formatDate(date);
+        } else {
+            document.getElementById('appointment-date').value = formatDate(currentDate);
+        }
         
         if (time) {
             document.getElementById('appointment-start-time').value = time;
@@ -1409,11 +1436,137 @@ async function openAppointmentModal(time = null, staffId = null) {
             </div>
         `;
         
+        // 고객 검색 기능 추가
+        const guardianNameInput = document.getElementById('guardian-name');
+        const guardianPhoneInput = document.getElementById('guardian-phone');
+        
+        // 검색 결과 표시 컨테이너 추가
+        let searchResultsContainer = document.getElementById('customer-search-results');
+        if (!searchResultsContainer) {
+            searchResultsContainer = document.createElement('div');
+            searchResultsContainer.id = 'customer-search-results';
+            searchResultsContainer.className = 'search-results-container';
+            searchResultsContainer.style.display = 'none';
+            
+            // 검색 결과 컨테이너를 보호자 이름 입력 필드 아래에 배치
+            guardianNameInput.parentNode.appendChild(searchResultsContainer);
+        }
+        
+        // 보호자 이름 입력 시 검색
+        guardianNameInput.addEventListener('input', debounce(async function() {
+            const searchTerm = guardianNameInput.value.trim();
+            if (searchTerm.length < 2) {
+                searchResultsContainer.style.display = 'none';
+                return;
+            }
+            
+            try {
+                const response = await API.getCustomers(1, 5, searchTerm);
+                const searchResults = response.customers || [];
+                
+                if (searchResults.length > 0) {
+                    searchResultsContainer.innerHTML = '';
+                    
+                    searchResults.forEach(customer => {
+                        const resultItem = document.createElement('div');
+                        resultItem.className = 'search-result-item';
+                        resultItem.innerHTML = `
+                            <div class="customer-name">${customer.name}</div>
+                            <div class="customer-phone">${customer.phone}</div>
+                            <div class="customer-pets">${(customer.pets || []).map(p => p.name).join(', ')}</div>
+                        `;
+                        
+                        resultItem.addEventListener('click', () => {
+                            // 선택한 고객 정보로 폼 채우기
+                            guardianNameInput.value = customer.name;
+                            guardianPhoneInput.value = customer.phone;
+                            
+                            // 고객의 반려동물 정보도 채우기
+                            if (customer.pets && customer.pets.length > 0) {
+                                document.getElementById('pet-containers').innerHTML = '';
+                                
+                                customer.pets.forEach((pet, index) => {
+                                    addPetForm();
+                                    const petContainers = document.querySelectorAll('#pet-containers .pet-container');
+                                    const container = petContainers[index];
+                                    
+                                    container.querySelector('.pet-name').value = pet.name || '';
+                                    container.querySelector('.pet-breed').value = pet.breed || '';
+                                    container.querySelector('.pet-weight').value = pet.weight || '';
+                                    container.querySelector('.pet-age').value = pet.age || '';
+                                    container.querySelector('.pet-memo').value = pet.memo || '';
+                                });
+                            }
+                            
+                            // 검색 결과 숨기기
+                            searchResultsContainer.style.display = 'none';
+                        });
+                        
+                        searchResultsContainer.appendChild(resultItem);
+                    });
+                    
+                    searchResultsContainer.style.display = 'block';
+                } else {
+                    searchResultsContainer.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('고객 검색 중 오류:', error);
+                searchResultsContainer.style.display = 'none';
+            }
+        }, 300)); // 300ms 디바운스
+        
+        // 전화번호 입력 시 검색
+        guardianPhoneInput.addEventListener('input', debounce(async function() {
+            const phone = guardianPhoneInput.value.trim();
+            if (phone.length < 4) return;
+            
+            try {
+                // 전화번호로 고객 조회 API 호출
+                const response = await API.getCustomerByPhone(phone);
+                
+                if (response.exists && response.customer) {
+                    const customer = response.customer;
+                    
+                    // 고객 정보로 폼 채우기
+                    guardianNameInput.value = customer.name;
+                    
+                    // 고객의 반려동물 정보도 채우기
+                    if (customer.pets && customer.pets.length > 0) {
+                        document.getElementById('pet-containers').innerHTML = '';
+                        
+                        customer.pets.forEach((pet, index) => {
+                            addPetForm();
+                            const petContainers = document.querySelectorAll('#pet-containers .pet-container');
+                            const container = petContainers[index];
+                            
+                            container.querySelector('.pet-name').value = pet.name || '';
+                            container.querySelector('.pet-breed').value = pet.breed || '';
+                            container.querySelector('.pet-weight').value = pet.weight || '';
+                            container.querySelector('.pet-age').value = pet.age || '';
+                            container.querySelector('.pet-memo').value = pet.memo || '';
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error('전화번호로 고객 검색 중 오류:', error);
+            }
+        }, 500)); // 500ms 디바운스
+        
         modal.style.display = 'block';
     } catch (error) {
         console.error('예약 모달 열기 중 오류:', error);
         ToastNotification.show('예약 창을 여는 중 오류가 발생했습니다.', 'error');
     }
+}
+
+// 디바운스 함수 (입력이 끝난 후 일정 시간이 지나면 실행)
+function debounce(func, wait) {
+    let timeout;
+    return function(...args) {
+        const context = this;
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(context, args), wait);
+    };
 }
 
 // 종료 시간 자동 계산
