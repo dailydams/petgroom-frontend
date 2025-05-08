@@ -1106,9 +1106,46 @@ async function loadMonthView() {
         const daysToAdd = 6 - lastWeekEnd.getDay();
         lastWeekEnd.setDate(lastWeekEnd.getDate() + daysToAdd);
         
+        LoadingIndicator.show('달력 데이터를 불러오는 중...');
+        
+        // 한 번에 월 데이터 불러오기
+        const startDateStr = formatDate(firstDay);
+        const endDateStr = formatDate(lastDay);
+        
+        // 월간 데이터 한 번에 불러오기
+        let monthAppointments = [];
+        try {
+            const response = await API.getAppointmentsByMonth(
+                currentDate.getFullYear(),
+                currentDate.getMonth() + 1,  // API에서는 1-12 월을 사용
+                selectedStaffId
+            );
+            monthAppointments = response.appointments || [];
+            
+            // 월간 appointments 업데이트
+            const thisMonthDatePrefix = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+            appointments = appointments.filter(app => !app.date.startsWith(thisMonthDatePrefix));
+            appointments = [...appointments, ...monthAppointments];
+        } catch (error) {
+            console.error('월간 예약 조회 실패:', error);
+            ToastNotification.show(`월간 예약 정보를 불러오는 중 오류가 발생했습니다: ${error.message}`, 'error');
+        }
+        
+        // 날짜별로 예약 정리
+        const appointmentsByDate = {};
+        monthAppointments.forEach(app => {
+            if (!appointmentsByDate[app.date]) {
+                appointmentsByDate[app.date] = [];
+            }
+            appointmentsByDate[app.date].push(app);
+        });
+        
         // 월간 달력 생성
         let iterDate = new Date(firstWeekStart);
         const today = new Date();
+        
+        // 모든 날짜 요소를 한꺼번에 생성
+        const dayElements = [];
         
         while (iterDate <= lastWeekEnd) {
             const dayDate = new Date(iterDate);
@@ -1157,75 +1194,84 @@ async function loadMonthView() {
                 loadCalendar();
             });
             
-            monthBody.appendChild(dayElement);
-            
-            // 현재 월의 날짜에 대한 예약만 로드
-            if (dayDate.getMonth() === currentDate.getMonth()) {
-                try {
-                    const response = await API.getAppointmentsByDate(dateStr, selectedStaffId);
-                    const dayAppointments = response.appointments || [];
-                    
-                    // appointments 배열 업데이트
-                    appointments = appointments.filter(app => app.date !== dateStr);
-                    appointments = [...appointments, ...dayAppointments];
-                    
-                    // 최대 3개까지만 표시
-                    const maxDisplay = 3;
-                    
-                    for (let i = 0; i < Math.min(dayAppointments.length, maxDisplay); i++) {
-                        const app = dayAppointments[i];
-                        const appointmentElement = document.createElement('div');
-                        appointmentElement.className = `month-appointment status-${app.status}`;
-                        appointmentElement.textContent = `${app.startTime} ${app.guardian.name}`;
-                        
-                        // 예약 클릭 이벤트
-                        appointmentElement.addEventListener('click', (e) => {
-                            e.stopPropagation(); // 날짜 클릭 이벤트 방지
-                            openSaleModal(app);
-                        });
-                        
-                        dayContent.appendChild(appointmentElement);
-                    }
-                    
-                    // 추가 예약이 있으면 +N 표시
-                    if (dayAppointments.length > maxDisplay) {
-                        const moreElement = document.createElement('div');
-                        moreElement.className = 'month-appointment more';
-                        moreElement.textContent = `+${dayAppointments.length - maxDisplay}건 더보기`;
-                        
-                        // 더보기 클릭 시 일간 뷰로 전환
-                        moreElement.addEventListener('click', (e) => {
-                            e.stopPropagation(); // 날짜 클릭 이벤트 방지
-                            
-                            currentDate = new Date(dayDate);
-                            currentView = 'day';
-                            
-                            // 뷰 버튼 업데이트
-                            document.querySelectorAll('.view-btn').forEach(btn => {
-                                btn.classList.remove('active');
-                                if (btn.dataset.view === 'day') {
-                                    btn.classList.add('active');
-                                }
-                            });
-                            
-                            updateCalendarHeader();
-                            loadCalendar();
-                        });
-                        
-                        dayContent.appendChild(moreElement);
-                    }
-                } catch (error) {
-                    console.error(`${dateStr} 예약 로드 중 오류:`, error);
-                }
-            }
+            dayElements.push({
+                element: dayElement,
+                date: dayDate,
+                dateStr
+            });
             
             // 다음 날짜로
             iterDate.setDate(iterDate.getDate() + 1);
         }
+        
+        // 모든 날짜 요소를 DOM에 한꺼번에 추가
+        for (const dayData of dayElements) {
+            monthBody.appendChild(dayData.element);
+        }
+        
+        // 각 날짜에 예약 정보 추가 (DOM 추가 후 비동기로 처리)
+        setTimeout(() => {
+            for (const dayData of dayElements) {
+                const { element, dateStr } = dayData;
+                const dayContent = element.querySelector('.month-day-content');
+                
+                // 해당 날짜의 예약이 있는 경우
+                const dayAppointments = appointmentsByDate[dateStr] || [];
+                
+                // 최대 3개까지만 표시
+                const maxDisplay = 3;
+                
+                for (let i = 0; i < Math.min(dayAppointments.length, maxDisplay); i++) {
+                    const app = dayAppointments[i];
+                    const appointmentElement = document.createElement('div');
+                    appointmentElement.className = `month-appointment status-${app.status}`;
+                    appointmentElement.textContent = `${app.startTime} ${app.guardian.name}`;
+                    
+                    // 예약 클릭 이벤트
+                    appointmentElement.addEventListener('click', (e) => {
+                        e.stopPropagation(); // 날짜 클릭 이벤트 방지
+                        openSaleModal(app);
+                    });
+                    
+                    dayContent.appendChild(appointmentElement);
+                }
+                
+                // 추가 예약이 있으면 +N 표시
+                if (dayAppointments.length > maxDisplay) {
+                    const moreElement = document.createElement('div');
+                    moreElement.className = 'month-appointment more';
+                    moreElement.textContent = `+${dayAppointments.length - maxDisplay}건 더보기`;
+                    
+                    // 더보기 클릭 시 일간 뷰로 전환
+                    moreElement.addEventListener('click', (e) => {
+                        e.stopPropagation(); // 날짜 클릭 이벤트 방지
+                        
+                        currentDate = new Date(dayData.date);
+                        currentView = 'day';
+                        
+                        // 뷰 버튼 업데이트
+                        document.querySelectorAll('.view-btn').forEach(btn => {
+                            btn.classList.remove('active');
+                            if (btn.dataset.view === 'day') {
+                                btn.classList.add('active');
+                            }
+                        });
+                        
+                        updateCalendarHeader();
+                        loadCalendar();
+                    });
+                    
+                    dayContent.appendChild(moreElement);
+                }
+            }
+            
+            LoadingIndicator.hide();
+        }, 0);
+        
     } catch (error) {
+        LoadingIndicator.hide();
         console.error('월간 예약 조회 중 오류:', error);
         ToastNotification.show(`월간 예약 정보를 불러오는 중 오류가 발생했습니다: ${error.message}`, 'error');
-        throw error;
     }
 }
 
