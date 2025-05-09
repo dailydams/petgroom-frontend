@@ -244,9 +244,23 @@ function initEventListeners() {
     });
     
     // 매출 등록 폼 제출
-    document.getElementById('sale-form').addEventListener('submit', (e) => {
+    document.getElementById('sale-form').addEventListener('submit', async (e) => {
         e.preventDefault();
-        saveSaleFromForm();
+        
+        try {
+            // 고객 목록이 비어있는 경우 다시 로드
+            if (!customers || customers.length === 0) {
+                LoadingIndicator.show('고객 정보를 불러오는 중...');
+                const customersResponse = await API.getCustomers(1, 100);
+                customers = customersResponse.customers || [];
+                LoadingIndicator.hide();
+            }
+            
+            saveSaleFromForm();
+        } catch (error) {
+            console.error('고객 정보 로드 중 오류:', error);
+            ToastNotification.show('고객 정보를 불러오는 중 오류가 발생했습니다.', 'error');
+        }
     });
     
     // 매출 등록 취소 버튼
@@ -814,18 +828,49 @@ async function saveSaleFromForm() {
         const paymentMethod = document.querySelector('input[name="payment-method"]:checked').value;
         const memo = document.getElementById('sale-memo').value;
         
+        // 현재 사용자 정보 가져오기
+        let currentUser;
+        try {
+            currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
+        } catch (e) {
+            // 사용자 정보가 없거나 파싱 오류가 발생한 경우 처리
+            console.warn('세션에 사용자 정보가 없습니다:', e);
+        }
+        
+        // 직원 목록이 비어있는 경우 다시 로드
+        if (!staffMembers || staffMembers.length === 0) {
+            const staffResponse = await API.getStaff();
+            staffMembers = staffResponse.staffMembers || [];
+        }
+        
         // 관련 예약 찾기 (있는 경우)
         let customerId, staffId, date;
         
         if (appointmentId) {
             const appointment = appointments.find(a => a.id === appointmentId);
             if (appointment) {
-                customerId = appointment.customer_id;
-                staffId = appointment.staff_id;
+                // 예약 객체에서 customer_id 또는 customer.id 를 사용
+                customerId = appointment.customer_id || (appointment.customer ? appointment.customer.id : null);
+                staffId = appointment.staff_id || (appointment.staff ? appointment.staff.id : null);
                 date = appointment.date;
             }
+            
+            // 예약 정보에서 ID를 찾지 못한 경우 API를 통해 예약 정보 가져오기 시도
+            if (!customerId || !staffId) {
+                try {
+                    const appointmentResponse = await API.getAppointments({ page: 1, limit: 1, id: appointmentId });
+                    if (appointmentResponse && appointmentResponse.appointments && appointmentResponse.appointments.length > 0) {
+                        const appointmentData = appointmentResponse.appointments[0];
+                        customerId = appointmentData.customer_id || (appointmentData.customer ? appointmentData.customer.id : null);
+                        staffId = appointmentData.staff_id || (appointmentData.staff ? appointmentData.staff.id : null);
+                        date = appointmentData.date;
+                    }
+                } catch (err) {
+                    console.warn('예약 정보를 가져오는 중 오류:', err);
+                }
+            }
         } else {
-            // 고객 이름으로 고객 ID 찾기 (간단한 구현)
+            // 고객 이름으로 고객 ID 찾기
             const customer = customers.find(c => c.name === customerName);
             if (customer) {
                 customerId = customer.id;
@@ -2284,8 +2329,16 @@ async function saveAccountFromForm() {
 }
 
 // 매출 등록 모달 열기
-function openSaleModal(appointment = null) {
+async function openSaleModal(appointment = null) {
     try {
+        // 고객 목록이 비어있는 경우 다시 로드
+        if (!customers || customers.length === 0) {
+            LoadingIndicator.show('고객 정보를 불러오는 중...');
+            const customersResponse = await API.getCustomers(1, 100);
+            customers = customersResponse.customers || [];
+            LoadingIndicator.hide();
+        }
+        
         const modal = document.getElementById('sale-modal');
         const form = document.getElementById('sale-form');
         form.reset();
