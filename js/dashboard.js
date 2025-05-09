@@ -18,6 +18,9 @@ let salesChart = null;
 // DOM이 로드된 후 실행
 document.addEventListener('DOMContentLoaded', async () => {
     try {
+        // salesChart 변수 초기화
+        window.salesChart = null;
+        
         // 인증 확인
         const token = sessionStorage.getItem('token');
         const userJson = sessionStorage.getItem('currentUser');
@@ -2558,9 +2561,10 @@ function updateSalesChart(salesData, period) {
     try {
         const ctx = document.getElementById('sales-chart').getContext('2d');
         
-        // 기존 차트 제거
-        if (window.salesChart) {
+        // 기존 차트 제거 - 개선된 방식
+        if (window.salesChart instanceof Chart) {
             window.salesChart.destroy();
+            window.salesChart = null;
         }
         
         let labels = [];
@@ -2729,6 +2733,23 @@ function updateSalesChart(salesData, period) {
     } catch (error) {
         console.error('매출 차트 업데이트 중 오류:', error);
         // 차트 오류는 UI를 해치지 않도록 조용히 처리
+        
+        // 오류 발생 시 차트 객체 초기화
+        if (window.salesChart) {
+            try {
+                window.salesChart.destroy();
+            } catch (e) {
+                console.warn('차트 제거 중 오류:', e);
+            }
+            window.salesChart = null;
+        }
+        
+        // 차트 영역 클리어
+        const canvas = document.getElementById('sales-chart');
+        if (canvas) {
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
     }
 }
 
