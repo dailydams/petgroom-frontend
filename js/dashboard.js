@@ -829,14 +829,35 @@ async function saveSaleFromForm() {
             const customer = customers.find(c => c.name === customerName);
             if (customer) {
                 customerId = customer.id;
+            } else {
+                // 고객을 찾지 못한 경우 오류 표시
+                throw new Error('고객 정보를 찾을 수 없습니다. 유효한 고객을 선택해주세요.');
             }
             
             // 현재 로그인한 사용자를 담당자로
-            staffId = currentUser.id;
+            if (currentUser && currentUser.id) {
+                staffId = currentUser.id;
+            } else {
+                // 현재 로그인한 사용자 정보가 없는 경우 첫 번째 스태프를 사용
+                const firstStaff = staffMembers.find(s => s.role === 'staff');
+                if (firstStaff) {
+                    staffId = firstStaff.id;
+                } else {
+                    throw new Error('직원 정보를 찾을 수 없습니다. 로그인 후 다시 시도해주세요.');
+                }
+            }
             
             // 날짜는 오늘
             date = formatDate(new Date());
         }
+        
+        // 필수 필드 검증
+        if (!customerId) throw new Error('고객 정보가 누락되었습니다.');
+        if (!staffId) throw new Error('담당자 정보가 누락되었습니다.');
+        if (!date) throw new Error('날짜 정보가 누락되었습니다.');
+        if (!service) throw new Error('서비스 정보가 누락되었습니다.');
+        if (!amount || isNaN(amount)) throw new Error('유효한 금액을 입력해주세요.');
+        if (!paymentMethod) throw new Error('결제 방식을 선택해주세요.');
         
         // 매출 데이터 객체
         const saleData = {
@@ -849,6 +870,8 @@ async function saveSaleFromForm() {
             paymentMethod,
             memo
         };
+        
+        console.log('매출 등록 데이터:', saleData);
         
         // 매출 등록 API 호출
         await API.saveSale(saleData);
