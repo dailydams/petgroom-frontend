@@ -35,7 +35,38 @@ const API_CONFIG = {
   
   // 네트워크 상태 확인
   function isOnline() {
-    return navigator.onLine;
+    // 기본 navigator.onLine 체크
+    if (!navigator.onLine) {
+      return false;
+    }
+    
+    // 실제 연결이 가능한지 확인해주는 로직을 추가하도록 합니다
+    // 이 함수는 동기식이므로 여기서는 navigator.onLine만 확인하고
+    // 실제 연결 확인은 별도 비동기 함수가 필요합니다
+    return true;
+  }
+  
+  // 실제 네트워크 연결 상태 테스트 (비동기)
+  async function testNetworkConnection() {
+    try {
+      // 간단한 헤더 요청으로 연결 확인
+      const testUrl = `${API_CONFIG.BASE_URL}/api/ping?_=${Date.now()}`;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      
+      const response = await fetch(testUrl, {
+        method: 'HEAD',
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' },
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      return true;
+    } catch (error) {
+      console.warn('네트워크 연결 테스트 실패:', error);
+      return false;
+    }
   }
   
   // 인증 헤더 설정
@@ -56,7 +87,8 @@ const API_CONFIG = {
   // API 요청 함수 (재시도 로직 포함)
   async function apiRequest(endpoint, method = 'GET', data = null, retries = API_CONFIG.RETRY_COUNT) {
     try {
-      if (!isOnline()) {
+      // 네트워크 상태 확인 - 명확한 오프라인 상태일 때만 바로 에러
+      if (!navigator.onLine) {
         throw new Error('인터넷 연결이 오프라인 상태입니다. 연결 상태를 확인해주세요.');
       }
       
@@ -82,7 +114,14 @@ const API_CONFIG = {
         const response = await fetch(`${API_CONFIG.BASE_URL}${endpoint}`, options);
         clearTimeout(timeoutId);
         
-        const result = await response.json();
+        // 응답 바디 읽기
+        let result;
+        try {
+          result = await response.json();
+        } catch (jsonError) {
+          console.warn('API 응답 파싱 오류:', jsonError);
+          throw new Error('서버 응답을 처리할 수 없습니다.');
+        }
         
         // API 에러 처리
         if (!response.ok) {
@@ -99,9 +138,21 @@ const API_CONFIG = {
         }
         
         // 네트워크 에러인 경우 재시도
-        if (err.message.includes('NetworkError') || err.message.includes('network') || err.message.includes('Failed to fetch')) {
+        if (err.message.includes('NetworkError') || 
+            err.message.includes('network') || 
+            err.message.includes('Failed to fetch') || 
+            err.message.includes('Connection refused')) {
+          
+          // 실시간 네트워크 연결 테스트 (실제 서버 연결 확인)
+          const isConnected = await testNetworkConnection().catch(() => false);
+          if (!isConnected) {
+            throw new Error('인터넷 연결이 불안정합니다. 연결 상태를 확인해주세요.');
+          }
+          
           if (retries > 0) {
-            await new Promise(resolve => setTimeout(resolve, API_CONFIG.RETRY_DELAY));
+            // 재시도 전 지연 시간 설정 (점점 길어지게)
+            const delay = API_CONFIG.RETRY_DELAY * (API_CONFIG.RETRY_COUNT - retries + 1);
+            await new Promise(resolve => setTimeout(resolve, delay));
             return apiRequest(endpoint, method, data, retries - 1);
           }
         }
@@ -361,13 +412,19 @@ const API_CONFIG = {
     
     // 유틸리티
     isOnline,
+    testNetworkConnection,
     isTokenExpired: TokenService.isTokenExpired
   };
   
   // 네트워크 연결 상태 감지
-  window.addEventListener('online', () => {
+  window.addEventListener('online', async () => {
     console.log('온라인 상태로 전환되었습니다.');
-    // 온라인 상태로 돌아왔을 때 로직을 여기 추가
+    
+    // 온라인 상태로 돌아왔을 때 실제 연결 테스트
+    const isConnected = await testNetworkConnection().catch(() => false);
+    if (!isConnected) {
+      console.warn("네트워크 연결이 불안정한 상태입니다.");
+    }
   });
   
   window.addEventListener('offline', () => {
