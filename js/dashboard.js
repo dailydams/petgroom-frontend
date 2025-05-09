@@ -384,7 +384,7 @@ function initAppointmentEvents() {
     document.getElementById('cancel-appointment-btn').addEventListener('click', () => {
         document.getElementById('appointment-modal').style.display = 'none';
     });
-    
+
     // 서비스 버튼 클릭 이벤트
     const serviceBtns = document.querySelectorAll('.service-btn');
     serviceBtns.forEach(btn => {
@@ -402,10 +402,10 @@ function initAppointmentEvents() {
             updateEndTime(btn.dataset.duration);
         });
     });
-    
+
     // 반려동물 추가 버튼
     document.getElementById('add-pet-btn').addEventListener('click', addPetForm);
-    
+
     // 고객 검색 결과 컨테이너 스타일 추가
     const styleEl = document.createElement('style');
     styleEl.textContent = `
@@ -447,7 +447,7 @@ function initAppointmentEvents() {
             margin-top: 3px;
         }
     `;
-    
+
     document.head.appendChild(styleEl);
 }
 
@@ -1422,7 +1422,7 @@ async function openAppointmentModal(time = null, staffId = null, date = null) {
                 <div class="form-grid">
                     <div class="form-group">
                         <label for="pet-weight-1">몸무게(kg)</label>
-                        <input type="number" id="pet-weight-1" class="form-control pet-weight" required>
+                        <input type="number" id="pet-weight-1" class="form-control pet-weight" step="0.1" required>
                     </div>
                     <div class="form-group">
                         <label for="pet-age-1">나이</label>
@@ -1756,7 +1756,7 @@ function addPetForm() {
         <div class="form-grid">
             <div class="form-group">
                 <label for="pet-weight-${petCount}">몸무게(kg)</label>
-                <input type="number" id="pet-weight-${petCount}" class="form-control pet-weight" required>
+                <input type="number" id="pet-weight-${petCount}" class="form-control pet-weight" step="0.1" required>
             </div>
             <div class="form-group">
                 <label for="pet-age-${petCount}">나이</label>
@@ -1807,7 +1807,7 @@ async function openCustomerModal(customerId = null, mode = 'add') {
                 <div class="form-grid">
                     <div class="form-group">
                         <label for="customer-pet-weight-1">몸무게(kg)</label>
-                        <input type="number" id="customer-pet-weight-1" class="form-control customer-pet-weight" required>
+                        <input type="number" id="customer-pet-weight-1" class="form-control customer-pet-weight" step="0.1" required>
                     </div>
                     <div class="form-group">
                         <label for="customer-pet-age-1">나이</label>
@@ -1844,7 +1844,7 @@ async function openCustomerModal(customerId = null, mode = 'add') {
                             petContainer.innerHTML = `
                                 <div class="form-grid">
                                     <div class="form-group">
-                                       <label for="customer-pet-name-${index+1}">반려동물명</label>
+                                        <label for="customer-pet-name-${index+1}">반려동물명</label>
                                         <input type="text" id="customer-pet-name-${index+1}" class="form-control customer-pet-name" value="${pet.name}" required>
                                     </div>
                                     <div class="form-group">
@@ -1855,7 +1855,7 @@ async function openCustomerModal(customerId = null, mode = 'add') {
                                 <div class="form-grid">
                                     <div class="form-group">
                                         <label for="customer-pet-weight-${index+1}">몸무게(kg)</label>
-                                        <input type="number" id="customer-pet-weight-${index+1}" class="form-control customer-pet-weight" value="${pet.weight || ''}" required>
+                                        <input type="number" id="customer-pet-weight-${index+1}" class="form-control customer-pet-weight" value="${pet.weight || ''}" step="0.1" required>
                                     </div>
                                     <div class="form-group">
                                         <label for="customer-pet-age-${index+1}">나이</label>
@@ -1940,7 +1940,7 @@ function addCustomerPetForm() {
         <div class="form-grid">
             <div class="form-group">
                 <label for="customer-pet-weight-${petCount}">몸무게(kg)</label>
-                <input type="number" id="customer-pet-weight-${petCount}" class="form-control customer-pet-weight" required>
+                <input type="number" id="customer-pet-weight-${petCount}" class="form-control customer-pet-weight" step="0.1" required>
             </div>
             <div class="form-group">
                 <label for="customer-pet-age-${petCount}">나이</label>
