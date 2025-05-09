@@ -65,7 +65,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // 네트워크 상태 감지 초기화
 function initNetworkStatus() {
-    // 온라인/오프라인 상태 배너
+    // 오프라인 배너 생성
     const offlineBanner = document.createElement('div');
     offlineBanner.id = 'offline-banner';
     offlineBanner.className = 'offline-banner';
@@ -78,10 +78,13 @@ function initNetworkStatus() {
     
     document.body.appendChild(offlineBanner);
     
-    // 초기 상태 확인
-    if (!navigator.onLine) {
-        offlineBanner.classList.add('show');
+    // 초기 상태 확인 - 실제 네트워크 상태 테스트 추가
+    function checkRealConnection() {
+        return navigator.onLine && window.location.hostname !== "";
     }
+    
+    // 초기 상태는 숨김 처리
+    offlineBanner.classList.remove('show');
     
     // 네트워크 상태 이벤트
     window.addEventListener('online', () => {
@@ -93,11 +96,14 @@ function initNetworkStatus() {
     });
     
     window.addEventListener('offline', () => {
-        const banner = document.getElementById('offline-banner');
-        if (banner) {
-            banner.classList.add('show');
+        // 실제 네트워크 연결이 없을 때만 표시
+        if (!checkRealConnection()) {
+            const banner = document.getElementById('offline-banner');
+            if (banner) {
+                banner.classList.add('show');
+            }
+            ToastNotification.show('인터넷 연결이 끊겼습니다. 연결 상태를 확인해주세요.', 'error');
         }
-        ToastNotification.show('인터넷 연결이 끊겼습니다. 연결 상태를 확인해주세요.', 'error');
     });
 }
 
@@ -2524,11 +2530,11 @@ async function renderSalesData(period) {
                 
                 tr.innerHTML = `
                     <td>${date}</td>
-                    <td>${sale.customer.name}</td>
+                    <td>${sale.customer && sale.customer.name ? sale.customer.name : '알 수 없음'}</td>
                     <td>${(sale.pets || []).map(p => p.name).join(', ')}</td>
-                    <td>${sale.service}</td>
-                    <td>${sale.staff.name}</td>
-                    <td>${sale.payment_method}</td>
+                    <td>${sale.service || '-'}</td>
+                    <td>${sale.staff && sale.staff.name ? sale.staff.name : '알 수 없음'}</td>
+                    <td>${sale.payment_method || '-'}</td>
                     <td>${sale.amount.toLocaleString()}원</td>
                 `;
                 
@@ -2611,9 +2617,16 @@ function updateSalesChart(salesData, period) {
             const salesByHour = Array(24).fill(0);
             
             salesData.forEach(sale => {
-                const saleDate = new Date(sale.date);
-                const saleHour = parseInt(sale.created_at.split('T')[1].split(':')[0]);
-                salesByHour[saleHour] += sale.amount;
+                if (!sale.created_at) return;
+                try {
+                    const saleDate = new Date(sale.date);
+                    const saleHour = parseInt(sale.created_at.split('T')[1].split(':')[0]);
+                    if (!isNaN(saleHour) && saleHour >= 0 && saleHour < 24) {
+                        salesByHour[saleHour] += sale.amount;
+                    }
+                } catch(e) {
+                    console.warn('매출 데이터 파싱 오류:', e);
+                }
             });
             
             labels = Array.from({ length: 24 }, (_, i) => `${i}시`);
@@ -2624,14 +2637,19 @@ function updateSalesChart(salesData, period) {
             const salesByDay = {};
             
             salesData.forEach(sale => {
-                const day = sale.date.split('-')[2]; // DD
-                if (!salesByDay[day]) {
-                    salesByDay[day] = 0;
+                if (!sale.date || typeof sale.date !== 'string') return;
+                try {
+                    const day = sale.date.split('-')[2]; // DD
+                    if (!salesByDay[day]) {
+                        salesByDay[day] = 0;
+                    }
+                    salesByDay[day] += sale.amount;
+                } catch(e) {
+                    console.warn('매출 데이터 파싱 오류:', e);
                 }
-                salesByDay[day] += sale.amount;
             });
 
-                // 정렬된 날짜로 변환
+            // 정렬된 날짜로 변환
             const sortedDays = Object.keys(salesByDay).sort((a, b) => parseInt(a) - parseInt(b));
             
             labels = sortedDays.map(day => `${day}일`);
@@ -2642,19 +2660,28 @@ function updateSalesChart(salesData, period) {
             const salesByMonth = {};
             
             salesData.forEach(sale => {
-                const monthYear = sale.date.substring(0, 7); // YYYY-MM
-                if (!salesByMonth[monthYear]) {
-                    salesByMonth[monthYear] = 0;
+                if (!sale.date || typeof sale.date !== 'string') return;
+                try {
+                    const monthYear = sale.date.substring(0, 7); // YYYY-MM
+                    if (!salesByMonth[monthYear]) {
+                        salesByMonth[monthYear] = 0;
+                    }
+                    salesByMonth[monthYear] += sale.amount;
+                } catch(e) {
+                    console.warn('매출 데이터 파싱 오류:', e);
                 }
-                salesByMonth[monthYear] += sale.amount;
             });
             
             // 정렬된 월로 변환
             const sortedMonths = Object.keys(salesByMonth).sort();
             
             labels = sortedMonths.map(month => {
-                const [year, monthNum] = month.split('-');
-                return `${year}년 ${monthNum}월`;
+                try {
+                    const [year, monthNum] = month.split('-');
+                    return `${year}년 ${monthNum}월`;
+                } catch(e) {
+                    return month;
+                }
             });
             data = sortedMonths.map(month => salesByMonth[month]);
         }
