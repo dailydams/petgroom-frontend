@@ -49,23 +49,32 @@ const API_CONFIG = {
   // 실제 네트워크 연결 상태 테스트 (비동기)
   async function testNetworkConnection() {
     try {
-      // 간단한 헤더 요청으로 연결 확인
-      const testUrl = `${API_CONFIG.BASE_URL}/api/ping?_=${Date.now()}`;
+      // 서버에 Ping 요청 보내기
+      const testUrl = `${API_CONFIG.BASE_URL}/api/ping?t=${Date.now()}`;
+      
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 3000);
       
       const response = await fetch(testUrl, {
         method: 'HEAD',
-        cache: 'no-store',
-        headers: { 'Cache-Control': 'no-cache' },
+        cache: 'no-cache',
         signal: controller.signal
       });
       
       clearTimeout(timeoutId);
       return true;
     } catch (error) {
-      console.warn('네트워크 연결 테스트 실패:', error);
-      return false;
+      // 타임아웃이나 네트워크 오류는 연결 실패로 간주
+      if (error.name === 'AbortError' || 
+          error.name === 'TypeError' || 
+          (error.message && error.message.includes('NetworkError'))) {
+        return false;
+      }
+      
+      // 404와 같은 HTTP 오류는 서버가 응답한 것이므로 연결된 것으로 간주
+      // 다른 예상치 못한 오류도 일단 연결된 것으로 처리하는 것이 안전
+      console.warn('네트워크 연결 테스트 중 예상치 못한 오류:', error);
+      return true;
     }
   }
   
