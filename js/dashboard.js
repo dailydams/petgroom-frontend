@@ -23,11 +23,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.salesChart = null;
         chartInitialized = false;
         
-        // Chart ID 충돌을 방지하기 위한 초기화
-        const salesChartCanvas = document.getElementById('sales-chart');
-        if (salesChartCanvas) {
-            // 차트 ID 재설정 - Chart.js 캐시 방지
-            salesChartCanvas.getContext('2d').canvas.id = 'sales-chart-' + Date.now();
+        // Chart.js 글로벌 설정
+        if (window.Chart) {
+            // Chart.js 레지스트리 초기화
+            initChartJS();
+        }
+        
+        // 차트 컨테이너와 캔버스 확인
+        const chartContainer = document.querySelector('.chart-container');
+        if (chartContainer) {
+            let canvas = document.getElementById('sales-chart');
+            
+            // 차트 캔버스가 없으면 생성
+            if (!canvas) {
+                canvas = document.createElement('canvas');
+                canvas.id = 'sales-chart';
+                chartContainer.appendChild(canvas);
+            }
         }
         
         // 인증 확인
@@ -77,7 +89,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // 네트워크 상태 감지 초기화
 function initNetworkStatus() {
-    // 오프라인 배너 생성
+    // 오프라인 배너 생성은 유지하되 기능 비활성화
     const offlineBanner = document.createElement('div');
     offlineBanner.id = 'offline-banner';
     offlineBanner.className = 'offline-banner';
@@ -90,94 +102,32 @@ function initNetworkStatus() {
     
     document.body.appendChild(offlineBanner);
     
-    // 초기 상태는 숨김 처리
+    // 초기 상태는 숨김 처리 (오프라인 배너를 완전히 숨김)
+    offlineBanner.style.display = 'none';
     offlineBanner.classList.remove('show');
     
-    // 실제 네트워크 상태 확인 함수
-    async function checkRealNetworkConnection() {
-        // navigator.onLine은 기본 검사지만 신뢰도가 낮음
-        if (!navigator.onLine) return false;
-        
-        try {
-            // ping 테스트 - 응답 성공 여부만 확인 (내용은 중요하지 않음)
-            // 캐시 방지를 위한 랜덤 쿼리 추가
-            const testUrl = `${window.location.origin}/favicon.ico?rand=${Math.random()}`;
-            const response = await fetch(testUrl, { 
-                method: 'HEAD',
-                mode: 'no-cors',
-                cache: 'no-store',
-                headers: { 'Cache-Control': 'no-cache' },
-                timeout: 3000
-            });
-            return true;
-        } catch (error) {
-            console.warn('네트워크 연결 테스트 실패:', error);
-            return false;
-        }
-    }
-    
-    // 초기 연결 상태 확인
-    checkRealNetworkConnection().then(isConnected => {
-        if (!isConnected) {
-            offlineBanner.classList.add('show');
-        }
-    });
-    
-    // 연결 상태 변경 이벤트
-    let lastOnlineState = true;
-    let connectionCheckTimeout = null;
-    
-    // 온라인 상태로 변경 시
-    window.addEventListener('online', async () => {
-        // 중복 알림 방지를 위해 딜레이 추가
-        clearTimeout(connectionCheckTimeout);
-        connectionCheckTimeout = setTimeout(async () => {
-            const isConnected = await checkRealNetworkConnection();
-            if (isConnected && !lastOnlineState) {
-                const banner = document.getElementById('offline-banner');
-                if (banner) {
-                    banner.classList.remove('show');
-                }
-                ToastNotification.show('인터넷 연결이 복구되었습니다.', 'success');
-                lastOnlineState = true;
-            }
-        }, 1000);
-    });
-    
-    // 오프라인 상태로 변경 시
+    // 오프라인 감지는 실제 네트워크 이벤트에만 의존하도록 수정
     window.addEventListener('offline', () => {
-        // 중복 알림 방지를 위해 딜레이 추가
-        clearTimeout(connectionCheckTimeout);
-        connectionCheckTimeout = setTimeout(async () => {
-            const isConnected = await checkRealNetworkConnection();
-            if (!isConnected && lastOnlineState) {
-                const banner = document.getElementById('offline-banner');
-                if (banner) {
-                    banner.classList.add('show');
-                }
-                ToastNotification.show('인터넷 연결이 끊겼습니다. 연결 상태를 확인해주세요.', 'error');
-                lastOnlineState = false;
-            }
-        }, 1000);
+        const banner = document.getElementById('offline-banner');
+        if (banner) {
+            banner.style.display = 'block';
+            banner.classList.add('show');
+        }
     });
     
-    // 주기적으로 연결 상태 확인 (2분마다)
-    setInterval(async () => {
-        const isConnected = await checkRealNetworkConnection();
+    window.addEventListener('online', () => {
         const banner = document.getElementById('offline-banner');
-        
-        if (!isConnected && lastOnlineState) {
-            // 연결이 끊어졌을 때만 알림
-            if (banner) banner.classList.add('show');
-            ToastNotification.show('인터넷 연결이 끊겼습니다. 연결 상태를 확인해주세요.', 'error');
-            lastOnlineState = false;
-        } else if (isConnected && !lastOnlineState) {
-            // 연결이 복구되었을 때만 알림
-            if (banner) banner.classList.remove('show');
-            ToastNotification.show('인터넷 연결이 복구되었습니다.', 'success');
-            lastOnlineState = true;
+        if (banner) {
+            setTimeout(() => {
+                banner.classList.remove('show');
+                setTimeout(() => {
+                    banner.style.display = 'none';
+                }, 300);
+            }, 1000);
         }
-    }, 120000); // 2분마다
+    });
+    
+    // 실시간 연결 확인 기능 비활성화
 }
 
 // 데이터 초기화 (API에서 데이터 가져오기)
@@ -2670,45 +2620,131 @@ async function renderSalesData(period) {
 // 매출 차트 업데이트
 function updateSalesChart(salesData, period) {
     try {
+        // Chart.js 전역 레지스트리 초기화 시도
+        // (이미 등록된 차트가 있을 경우 제거)
+        if (window.Chart && window.Chart.instances) {
+            Object.keys(window.Chart.instances).forEach(id => {
+                try {
+                    const chartInstance = window.Chart.instances[id];
+                    if (chartInstance) {
+                        chartInstance.destroy();
+                    }
+                } catch (err) {
+                    console.warn('레지스트리에서 차트 제거 중 오류:', err);
+                }
+            });
+        }
+        
         // 캔버스 요소 확인
-        const canvas = document.getElementById('sales-chart');
-        if (!canvas) {
-            console.error('차트 캔버스를 찾을 수 없습니다.');
+        const chartContainer = document.querySelector('.chart-container');
+        if (!chartContainer) {
+            console.error('차트 컨테이너를 찾을 수 없습니다.');
             return;
         }
         
-        // 기존 차트 제거를 위한 강화된 방식
-        if (window.salesChart instanceof Chart) {
+        // 새 캔버스 생성 (기존 캔버스 제거)
+        chartContainer.innerHTML = '';
+        const canvas = document.createElement('canvas');
+        const uniqueId = 'sales-chart-' + Date.now();
+        canvas.id = uniqueId;
+        chartContainer.appendChild(canvas);
+        
+        // Chart.js 생성 초기 지연
+        setTimeout(() => {
             try {
-                window.salesChart.destroy();
-            } catch (e) {
-                console.warn('기존 차트 제거 중 오류:', e);
-            }
-        }
-        
-        // 차트 객체 초기화
-        window.salesChart = null;
-        
-        // 새로운 컨텍스트 얻기 - 캔버스 리셋
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        // 차트 ID 갱신으로 충돌 방지
-        canvas.id = 'sales-chart-' + Date.now();
-        
-        let labels = [];
-        let data = [];
-        
-        if (salesData.length === 0) {
-            // 데이터가 없는 경우 빈 차트 표시
-            try {
+                const ctx = canvas.getContext('2d');
+                
+                // 차트 데이터 준비
+                let labels = [];
+                let data = [];
+                
+                // 나머지 차트 데이터 준비 코드는 그대로 유지...
+                if (salesData.length === 0) {
+                    // 데이터가 없는 경우 빈 차트 표시
+                    labels = ['데이터 없음'];
+                    data = [0];
+                } else if (period === 'today') {
+                    // 시간대별로 그룹화
+                    const salesByHour = Array(24).fill(0);
+                    
+                    salesData.forEach(sale => {
+                        if (!sale.created_at) return;
+                        try {
+                            const saleDate = new Date(sale.date);
+                            const saleHour = parseInt(sale.created_at.split('T')[1].split(':')[0]);
+                            if (!isNaN(saleHour) && saleHour >= 0 && saleHour < 24) {
+                                salesByHour[saleHour] += sale.amount;
+                            }
+                        } catch(e) {
+                            console.warn('매출 데이터 파싱 오류:', e);
+                        }
+                    });
+                    
+                    labels = Array.from({ length: 24 }, (_, i) => `${i}시`);
+                    data = salesByHour;
+                    
+                } else if (period === 'thisMonth' || period === 'lastMonth') {
+                    // 일별로 그룹화
+                    const salesByDay = {};
+                    
+                    salesData.forEach(sale => {
+                        if (!sale.date || typeof sale.date !== 'string') return;
+                        try {
+                            const day = sale.date.split('-')[2]; // DD
+                            if (!salesByDay[day]) {
+                                salesByDay[day] = 0;
+                            }
+                            salesByDay[day] += sale.amount;
+                        } catch(e) {
+                            console.warn('매출 데이터 파싱 오류:', e);
+                        }
+                    });
+
+                    // 정렬된 날짜로 변환
+                    const sortedDays = Object.keys(salesByDay).sort((a, b) => parseInt(a) - parseInt(b));
+                    
+                    labels = sortedDays.map(day => `${day}일`);
+                    data = sortedDays.map(day => salesByDay[day]);
+                    
+                } else {
+                    // 월별로 그룹화
+                    const salesByMonth = {};
+                    
+                    salesData.forEach(sale => {
+                        if (!sale.date || typeof sale.date !== 'string') return;
+                        try {
+                            const monthYear = sale.date.substring(0, 7); // YYYY-MM
+                            if (!salesByMonth[monthYear]) {
+                                salesByMonth[monthYear] = 0;
+                            }
+                            salesByMonth[monthYear] += sale.amount;
+                        } catch(e) {
+                            console.warn('매출 데이터 파싱 오류:', e);
+                        }
+                    });
+                    
+                    // 정렬된 월로 변환
+                    const sortedMonths = Object.keys(salesByMonth).sort();
+                    
+                    labels = sortedMonths.map(month => {
+                        try {
+                            const [year, monthNum] = month.split('-');
+                            return `${year}년 ${monthNum}월`;
+                        } catch(e) {
+                            return month;
+                        }
+                    });
+                    data = sortedMonths.map(month => salesByMonth[month]);
+                }
+                
+                // 차트 생성
                 window.salesChart = new Chart(ctx, {
                     type: 'line',
                     data: {
-                        labels: ['데이터 없음'],
+                        labels: labels,
                         datasets: [{
                             label: '매출',
-                            data: [0],
+                            data: data,
                             borderColor: '#4e73df',
                             backgroundColor: 'rgba(78, 115, 223, 0.1)',
                             tension: 0.4,
@@ -2744,173 +2780,11 @@ function updateSalesChart(salesData, period) {
                 
                 chartInitialized = true;
             } catch (e) {
-                console.error('빈 차트 생성 중 오류:', e);
+                console.error('차트 생성 중 오류:', e);
             }
-            
-            return;
-        }
-        
-        // 기간에 따라 데이터 그룹화
-        if (period === 'today') {
-            // 시간대별로 그룹화
-            const salesByHour = Array(24).fill(0);
-            
-            salesData.forEach(sale => {
-                if (!sale.created_at) return;
-                try {
-                    const saleDate = new Date(sale.date);
-                    const saleHour = parseInt(sale.created_at.split('T')[1].split(':')[0]);
-                    if (!isNaN(saleHour) && saleHour >= 0 && saleHour < 24) {
-                        salesByHour[saleHour] += sale.amount;
-                    }
-                } catch(e) {
-                    console.warn('매출 데이터 파싱 오류:', e);
-                }
-            });
-            
-            labels = Array.from({ length: 24 }, (_, i) => `${i}시`);
-            data = salesByHour;
-            
-        } else if (period === 'thisMonth' || period === 'lastMonth') {
-            // 일별로 그룹화
-            const salesByDay = {};
-            
-            salesData.forEach(sale => {
-                if (!sale.date || typeof sale.date !== 'string') return;
-                try {
-                    const day = sale.date.split('-')[2]; // DD
-                    if (!salesByDay[day]) {
-                        salesByDay[day] = 0;
-                    }
-                    salesByDay[day] += sale.amount;
-                } catch(e) {
-                    console.warn('매출 데이터 파싱 오류:', e);
-                }
-            });
-
-            // 정렬된 날짜로 변환
-            const sortedDays = Object.keys(salesByDay).sort((a, b) => parseInt(a) - parseInt(b));
-            
-            labels = sortedDays.map(day => `${day}일`);
-            data = sortedDays.map(day => salesByDay[day]);
-            
-        } else {
-            // 월별로 그룹화
-            const salesByMonth = {};
-            
-            salesData.forEach(sale => {
-                if (!sale.date || typeof sale.date !== 'string') return;
-                try {
-                    const monthYear = sale.date.substring(0, 7); // YYYY-MM
-                    if (!salesByMonth[monthYear]) {
-                        salesByMonth[monthYear] = 0;
-                    }
-                    salesByMonth[monthYear] += sale.amount;
-                } catch(e) {
-                    console.warn('매출 데이터 파싱 오류:', e);
-                }
-            });
-            
-            // 정렬된 월로 변환
-            const sortedMonths = Object.keys(salesByMonth).sort();
-            
-            labels = sortedMonths.map(month => {
-                try {
-                    const [year, monthNum] = month.split('-');
-                    return `${year}년 ${monthNum}월`;
-                } catch(e) {
-                    return month;
-                }
-            });
-            data = sortedMonths.map(month => salesByMonth[month]);
-        }
-        
-        // 차트 생성 - 안정성 강화
-        try {
-            window.salesChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: '매출',
-                        data: data,
-                        borderColor: '#4e73df',
-                        backgroundColor: 'rgba(78, 115, 223, 0.1)',
-                        tension: 0.4,
-                        fill: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: false
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    return `매출: ${context.parsed.y.toLocaleString()}원`;
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            ticks: {
-                                callback: function(value) {
-                                    return value.toLocaleString() + '원';
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-            
-            chartInitialized = true;
-        } catch (e) {
-            console.error('차트 생성 중 오류:', e);
-            
-            // 차트 요소가 제대로 초기화되지 않았을 가능성
-            if (e.message && e.message.includes('Canvas is already in use')) {
-                // canvas 요소 자체를 재생성
-                const chartContainer = canvas.parentElement;
-                if (chartContainer) {
-                    canvas.remove();
-                    const newCanvas = document.createElement('canvas');
-                    newCanvas.id = 'sales-chart-' + Date.now();
-                    chartContainer.appendChild(newCanvas);
-                    
-                    // 재귀적으로 다시 시도 (최대 1회)
-                    if (!chartInitialized) {
-                        setTimeout(() => updateSalesChart(salesData, period), 100);
-                    }
-                }
-            }
-        }
+        }, 50); // 50ms 지연으로 DOM 업데이트 및 이전 차트 정리 시간 확보
     } catch (error) {
         console.error('매출 차트 업데이트 중 오류:', error);
-        
-        // 오류 발생 시 차트 객체 초기화
-        if (window.salesChart) {
-            try {
-                window.salesChart.destroy();
-            } catch (e) {
-                console.warn('차트 제거 중 오류:', e);
-            }
-            window.salesChart = null;
-        }
-        
-        // 차트 영역 클리어
-        const canvas = document.getElementById('sales-chart');
-        if (canvas) {
-            try {
-                const ctx = canvas.getContext('2d');
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-            } catch (e) {
-                console.warn('캔버스 클리어 중 오류:', e);
-            }
-        }
     }
 }
 
@@ -3005,4 +2879,44 @@ async function renderAccountsTable() {
 export default {
     // 필요한 경우 외부에서 접근할 함수 노출
 };
+        
+// Chart.js 전역 초기화 함수
+function initChartJS() {
+    // 기존 차트 모두 정리
+    if (window.Chart && window.Chart.instances) {
+        Object.keys(window.Chart.instances).forEach(id => {
+            try {
+                const chartInstance = window.Chart.instances[id];
+                if (chartInstance) {
+                    chartInstance.destroy();
+                }
+            } catch (err) {
+                console.warn('Chart.js 레지스트리 정리 중 오류:', err);
+            }
+        });
+    }
+    
+    // Chart.js 전역 설정
+    if (window.Chart && window.Chart.defaults) {
+        // 반응형 설정
+        Chart.defaults.responsive = true;
+        Chart.defaults.maintainAspectRatio = false;
+        
+        // 애니메이션 최적화
+        Chart.defaults.animation = {
+            duration: 750,
+            easing: 'easeOutQuart'
+        };
+        
+        // 글꼴 및 텍스트 스타일
+        Chart.defaults.font = {
+            family: "'Noto Sans KR', 'Helvetica', 'Arial', sans-serif",
+            size: 12
+        };
+        
+        // 전역 색상 테마
+        Chart.defaults.borderColor = 'rgba(0, 0, 0, 0.1)';
+        Chart.defaults.color = '#555555';
+    }
+}
         
