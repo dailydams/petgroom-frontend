@@ -136,7 +136,7 @@ const API_CONFIG = {
         if (response.status === 401) {
           // 토큰이 만료되었거나 유효하지 않은 경우
           TokenService.removeToken();
-          window.location.href = '/login.html';
+          window.location.href = 'index.html';
           throw new Error('로그인이 필요합니다.');
         }
         
@@ -221,6 +221,7 @@ const API_CONFIG = {
     } catch (error) {
       // 토큰 갱신 실패 시 로그아웃 처리
       TokenService.removeToken();
+      window.location.href = 'index.html';
       throw error;
     }
   }
@@ -328,7 +329,7 @@ const API_CONFIG = {
 
         if (response.status === 401) {
             TokenService.removeToken();
-            window.location.href = '/login.html';
+            window.location.href = 'index.html';
             throw new Error('로그인이 필요합니다.');
         }
 
