@@ -1929,18 +1929,85 @@ function addPetForm() {
 
 // 알림톡 미리보기 업데이트
 function updateAlimtalkPreviews() {
-    for (const type in alimtalkTemplates) {
-        const previewEl = document.getElementById(`alimtalk-${type}-preview`);
-        if (previewEl) {
-            const contentContainer = previewEl.querySelector('.alimtalk-content');
-            if (contentContainer) {
-                // HTML로 변환하여 표시 (줄바꿈 유지)
-                contentContainer.innerHTML = alimtalkTemplates[type]
-                    .replace(/\n/g, '</p><p>')
-                    .replace(/^<\/p>/, '')
-                    .replace(/<p>$/, '');
+    try {
+        // 미리보기에 사용할 샘플 데이터
+        let sampleData = {
+            shopName: '딥펫샵',
+            shopPhone: '010-1234-5678',
+            appointmentDate: '2023-10-15 14:00',
+            guardianName: '',
+            petNames: '',
+            serviceName: ''
+        };
+        
+        // 폼에서 실제 입력된 데이터 가져오기
+        const guardianNameInput = document.getElementById('guardian-name');
+        if (guardianNameInput && guardianNameInput.value) {
+            sampleData.guardianName = guardianNameInput.value;
+        } else {
+            sampleData.guardianName = '김고객';
+        }
+        
+        // 반려동물 이름 가져오기
+        const petNameInputs = document.querySelectorAll('.pet-name');
+        if (petNameInputs && petNameInputs.length > 0) {
+            const petNames = Array.from(petNameInputs)
+                .map(input => input.value)
+                .filter(name => name)
+                .join(', ');
+            
+            sampleData.petNames = petNames || '멍멍이';
+        } else {
+            sampleData.petNames = '멍멍이';
+        }
+        
+        // 서비스 이름 가져오기
+        const selectedService = document.getElementById('selected-service');
+        if (selectedService && selectedService.value) {
+            sampleData.serviceName = selectedService.value;
+        } else {
+            // 선택된 서비스 버튼에서 가져오기
+            const activeServiceBtn = document.querySelector('.service-btn.active');
+            if (activeServiceBtn) {
+                sampleData.serviceName = activeServiceBtn.dataset.service || '미용';
+            } else {
+                sampleData.serviceName = '미용';
             }
         }
+        
+        // 예약 날짜와 시간 가져오기
+        const dateInput = document.getElementById('appointment-date');
+        const timeInput = document.getElementById('appointment-start-time');
+        
+        if (dateInput && dateInput.value && timeInput && timeInput.value) {
+            sampleData.appointmentDate = `${dateInput.value} ${timeInput.value}`;
+        }
+        
+        // 각 템플릿 타입에 대해 미리보기 업데이트
+        for (const type in alimtalkTemplates) {
+            const previewEl = document.getElementById(`alimtalk-${type}-preview`);
+            if (previewEl) {
+                const contentContainer = previewEl.querySelector('.alimtalk-content');
+                if (contentContainer) {
+                    // 변수 치환
+                    let previewContent = alimtalkTemplates[type]
+                        .replace(/{{매장명}}/g, sampleData.shopName)
+                        .replace(/{{예약날짜}}/g, sampleData.appointmentDate)
+                        .replace(/{{보호자명}}/g, sampleData.guardianName)
+                        .replace(/{{반려동물명}}/g, sampleData.petNames)
+                        .replace(/{{매장번호}}/g, sampleData.shopPhone)
+                        .replace(/{{서비스명}}/g, sampleData.serviceName);
+                    
+                    // HTML로 변환하여 표시 (줄바꿈 유지)
+                    contentContainer.innerHTML = previewContent
+                        .replace(/\n/g, '</p><p>')
+                        .replace(/^<\/p>/, '')
+                        .replace(/<p>$/, '');
+                }
+            }
+        }
+    } catch (error) {
+        console.error('알림톡 미리보기 업데이트 중 오류:', error);
     }
 }
 
@@ -1976,10 +2043,53 @@ function initAlimtalkTemplates() {
                     previewEl.style.display = 'block';
                 }
             }
+            
+            // 미리보기 업데이트
+            updateAlimtalkPreviews();
         });
     });
     
-    // 미리보기 업데이트
+    // 입력 필드 변경 시 미리보기 업데이트를 위한 이벤트 리스너 추가
+    const formInputs = [
+        'guardian-name',
+        'appointment-date',
+        'appointment-start-time',
+        'selected-service'
+    ];
+    
+    formInputs.forEach(inputId => {
+        const input = document.getElementById(inputId);
+        if (input) {
+            input.addEventListener('input', debounce(() => {
+                updateAlimtalkPreviews();
+            }, 300));
+            
+            // select 요소는 change 이벤트 추가
+            if (input.tagName === 'SELECT') {
+                input.addEventListener('change', () => {
+                    updateAlimtalkPreviews();
+                });
+            }
+        }
+    });
+    
+    // 서비스 버튼 클릭 시 미리보기 업데이트
+    document.querySelectorAll('.service-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            setTimeout(() => {
+                updateAlimtalkPreviews();
+            }, 100); // 약간의 지연 시간 추가 (active 클래스 적용 후)
+        });
+    });
+    
+    // 반려동물 정보 입력 시 미리보기 업데이트
+    document.querySelector('#pet-containers').addEventListener('input', debounce((e) => {
+        if (e.target.classList.contains('pet-name')) {
+            updateAlimtalkPreviews();
+        }
+    }, 300));
+    
+    // 미리보기 초기 업데이트
     updateAlimtalkPreviews();
 }
 
@@ -2302,4 +2412,412 @@ async function updateAppointmentStats() {
     } catch (error) {
         console.error('예약 통계 업데이트 중 오류:', error);
     }
+}
+
+// 고객 모달 열기 함수 추가
+function openCustomerModal(customerId = null, mode = 'add') {
+    try {
+        const modal = document.getElementById('customer-modal');
+        const form = document.getElementById('customer-form');
+        form.reset();
+        
+        // 모달 제목 설정
+        const modalTitle = document.getElementById('customer-modal-title');
+        
+        if (mode === 'add') {
+            modalTitle.textContent = '신규 고객 등록';
+        } else if (mode === 'edit') {
+            modalTitle.textContent = '고객 정보 수정';
+        } else if (mode === 'view') {
+            modalTitle.textContent = '고객 정보 보기';
+        }
+        
+        // 고객 ID가 있는 경우 기존 고객 정보 로드
+        if (customerId) {
+            // 데이터 로드를 위한 비동기 처리
+            const loadCustomerData = async () => {
+                try {
+                    LoadingIndicator.show('고객 정보를 불러오는 중...');
+                    
+                    const response = await API.getCustomerById(customerId);
+                    const customer = response.customer;
+                    
+                    if (customer) {
+                        // 기본 정보 설정
+                        document.getElementById('customer-name').value = customer.name || '';
+                        document.getElementById('customer-phone').value = customer.phone || '';
+                        document.getElementById('customer-memo').value = customer.memo || '';
+                        document.getElementById('customer-alimtalk-consent').checked = customer.alimtalkConsent !== false;
+                        
+                        // 반려동물 정보 설정
+                        if (customer.pets && customer.pets.length > 0) {
+                            // 기존 반려동물 컨테이너 초기화
+                            const petContainers = document.getElementById('customer-pet-containers');
+                            petContainers.innerHTML = '';
+                            
+                            // 각 반려동물 추가
+                            customer.pets.forEach((pet, index) => {
+                                addCustomerPetForm(); // 폼 추가
+                                
+                                // 추가된 마지막 폼에 데이터 설정
+                                const petContainerElements = document.querySelectorAll('#customer-pet-containers .pet-container');
+                                const container = petContainerElements[index];
+                                
+                                if (container) {
+                                    container.querySelector('[name^="pet_name"]').value = pet.name || '';
+                                    container.querySelector('[name^="pet_breed"]').value = pet.breed || '';
+                                    container.querySelector('[name^="pet_weight"]').value = pet.weight || '';
+                                    container.querySelector('[name^="pet_age"]').value = pet.age || '';
+                                    container.querySelector('[name^="pet_memo"]').value = pet.memo || '';
+                                }
+                            });
+                        }
+                        
+                        // 읽기 전용 모드 설정
+                        if (mode === 'view') {
+                            // 모든 입력 필드 비활성화
+                            form.querySelectorAll('input, textarea, select').forEach(input => {
+                                input.disabled = true;
+                            });
+                            
+                            // 버튼 숨기기
+                            form.querySelector('.form-buttons').style.display = 'none';
+                            document.getElementById('customer-add-pet-btn').style.display = 'none';
+                            
+                            // 삭제 버튼 숨기기
+                            form.querySelectorAll('.remove-pet-btn').forEach(btn => {
+                                btn.style.display = 'none';
+                            });
+                        } else {
+                            // 모든 입력 필드 활성화
+                            form.querySelectorAll('input, textarea, select').forEach(input => {
+                                input.disabled = false;
+                            });
+                            
+                            // 버튼 표시
+                            form.querySelector('.form-buttons').style.display = 'flex';
+                            document.getElementById('customer-add-pet-btn').style.display = 'block';
+                            
+                            // 삭제 버튼 표시
+                            form.querySelectorAll('.remove-pet-btn').forEach(btn => {
+                                btn.style.display = 'block';
+                            });
+                        }
+                    } else {
+                        ToastNotification.show('고객 정보를 찾을 수 없습니다.', 'error');
+                    }
+                    
+                    LoadingIndicator.hide();
+                } catch (error) {
+                    LoadingIndicator.hide();
+                    console.error('고객 정보 불러오기 실패:', error);
+                    ToastNotification.show('고객 정보를 불러오는 중 오류가 발생했습니다.', 'error');
+                }
+            };
+            
+            loadCustomerData();
+        } else {
+            // 신규 고객 등록인 경우 폼 초기화
+            // 모든 입력 필드 활성화
+            form.querySelectorAll('input, textarea, select').forEach(input => {
+                input.disabled = false;
+            });
+            
+            // 버튼 표시
+            form.querySelector('.form-buttons').style.display = 'flex';
+            document.getElementById('customer-add-pet-btn').style.display = 'block';
+            
+            // 기본 반려동물 폼 하나 유지
+            const petContainers = document.getElementById('customer-pet-containers');
+            if (petContainers.children.length === 0) {
+                addCustomerPetForm();
+            }
+        }
+        
+        // 모달 표시
+        modal.style.display = 'block';
+    } catch (error) {
+        console.error('고객 모달 열기 중 오류:', error);
+        ToastNotification.show('고객 창을 여는 중 오류가 발생했습니다.', 'error');
+    }
+}
+
+// 매출 데이터 렌더링 함수
+async function renderSalesData(period) {
+    try {
+        LoadingIndicator.show('매출 데이터를 불러오는 중...');
+        
+        // 기간 계산
+        const today = new Date();
+        let startDate, endDate;
+        
+        switch (period) {
+            case 'today':
+                startDate = formatDate(today);
+                endDate = formatDate(today);
+                break;
+            case 'thisMonth':
+                startDate = formatDate(new Date(today.getFullYear(), today.getMonth(), 1));
+                endDate = formatDate(today);
+                break;
+            case 'lastMonth':
+                startDate = formatDate(new Date(today.getFullYear(), today.getMonth() - 1, 1));
+                endDate = formatDate(new Date(today.getFullYear(), today.getMonth(), 0));
+                break;
+            case 'threeMonths':
+                startDate = formatDate(new Date(today.getFullYear(), today.getMonth() - 3, 1));
+                endDate = formatDate(today);
+                break;
+            case 'sixMonths':
+                startDate = formatDate(new Date(today.getFullYear(), today.getMonth() - 6, 1));
+                endDate = formatDate(today);
+                break;
+            case 'year':
+                startDate = formatDate(new Date(today.getFullYear() - 1, today.getMonth(), today.getDate()));
+                endDate = formatDate(today);
+                break;
+            default:
+                startDate = formatDate(today);
+                endDate = formatDate(today);
+        }
+        
+        // 담당자 필터링
+        const selectedStaffId = document.getElementById('staff-select').value;
+        
+        // API 호출
+        let salesResponse;
+        try {
+            salesResponse = await API.getSalesByPeriod(startDate, endDate, selectedStaffId);
+        } catch (error) {
+            console.error('매출 데이터 로드 실패:', error);
+            LoadingIndicator.hide();
+            ToastNotification.show('매출 데이터를 불러오는 중 오류가 발생했습니다.', 'error');
+            return;
+        }
+        
+        const salesData = salesResponse.sales || [];
+        
+        // 통계 업데이트
+        const totalSales = salesData.reduce((sum, sale) => sum + (sale.amount || 0), 0);
+        const totalAppointments = salesData.length;
+        const canceledAppointments = salesData.filter(sale => sale.status === 'canceled' || sale.status === 'no_show').length;
+        
+        document.getElementById('total-sales').textContent = `${totalSales.toLocaleString()}원`;
+        document.getElementById('total-appointments').textContent = `${totalAppointments}건`;
+        document.getElementById('total-canceled').textContent = `${canceledAppointments}건`;
+        
+        // 매출 데이터 테이블 렌더링
+        const salesTable = document.getElementById('sales-table').querySelector('tbody');
+        salesTable.innerHTML = '';
+        
+        if (salesData.length === 0) {
+            const emptyRow = document.createElement('tr');
+            emptyRow.innerHTML = `<td colspan="7" class="empty-table">데이터가 없습니다.</td>`;
+            salesTable.appendChild(emptyRow);
+        } else {
+            salesData.forEach(sale => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${sale.date}</td>
+                    <td>${sale.customer ? sale.customer.name : ''}</td>
+                    <td>${sale.pet ? sale.pet.name : ''}</td>
+                    <td>${sale.service || ''}</td>
+                    <td>${sale.staff ? sale.staff.name : ''}</td>
+                    <td>${sale.paymentMethod || ''}</td>
+                    <td class="amount">${sale.amount ? sale.amount.toLocaleString() : 0}원</td>
+                `;
+                salesTable.appendChild(row);
+            });
+        }
+        
+        // 차트 데이터 준비
+        let chartData;
+        
+        if (period === 'today') {
+            // 오늘 매출은 시간별로 표시
+            chartData = prepareHourlyChartData(salesData);
+        } else {
+            // 다른 기간은 일별 또는 월별로 표시
+            chartData = prepareDailyChartData(salesData, startDate, endDate, period);
+        }
+        
+        // 차트 렌더링
+        renderSalesChart(chartData, period);
+        
+        LoadingIndicator.hide();
+    } catch (error) {
+        LoadingIndicator.hide();
+        console.error('매출 데이터 렌더링 오류:', error);
+        ToastNotification.show('매출 데이터를 처리하는 중 오류가 발생했습니다.', 'error');
+    }
+}
+
+// 시간별 차트 데이터 준비
+function prepareHourlyChartData(salesData) {
+    // 시간별 매출 합계 계산
+    const hourlyData = Array(24).fill(0);
+    
+    salesData.forEach(sale => {
+        if (sale.time) {
+            const hour = parseInt(sale.time.split(':')[0]);
+            hourlyData[hour] += sale.amount || 0;
+        }
+    });
+    
+    // 차트용 데이터 포맷
+    const labels = Array(24).fill().map((_, i) => `${i}시`);
+    
+    return {
+        labels,
+        datasets: [{
+            label: '시간별 매출',
+            data: hourlyData,
+            backgroundColor: 'rgba(54, 162, 235, 0.5)',
+            borderColor: 'rgba(54, 162, 235, 1)',
+            borderWidth: 1
+        }]
+    };
+}
+
+// 일별/월별 차트 데이터 준비
+function prepareDailyChartData(salesData, startDate, endDate, period) {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    // 일별/월별 선택
+    let groupBy = 'day'; // 기본은 일별
+    
+    // 기간이 3개월 이상이면 월별로 그룹화
+    if (['threeMonths', 'sixMonths', 'year'].includes(period)) {
+        groupBy = 'month';
+    }
+    
+    let labels = [];
+    let data = [];
+    
+    if (groupBy === 'day') {
+        // 일별 데이터
+        const dailyData = {};
+        
+        // 날짜 범위의 모든 날짜에 대해 초기값 0 설정
+        let current = new Date(start);
+        while (current <= end) {
+            const dateStr = formatDate(current);
+            dailyData[dateStr] = 0;
+            current.setDate(current.getDate() + 1);
+        }
+        
+        // 매출 데이터로 합계 계산
+        salesData.forEach(sale => {
+            if (sale.date && dailyData.hasOwnProperty(sale.date)) {
+                dailyData[sale.date] += sale.amount || 0;
+            }
+        });
+        
+        // 차트 데이터 포맷
+        labels = Object.keys(dailyData);
+        data = Object.values(dailyData);
+    } else {
+        // 월별 데이터
+        const monthlyData = {};
+        
+        // 월별 범위 설정
+        let current = new Date(start.getFullYear(), start.getMonth(), 1);
+        while (current <= end) {
+            const monthStr = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}`;
+            monthlyData[monthStr] = 0;
+            current.setMonth(current.getMonth() + 1);
+        }
+        
+        // 매출 데이터로 합계 계산
+        salesData.forEach(sale => {
+            if (sale.date) {
+                const dateParts = sale.date.split('-');
+                const monthStr = `${dateParts[0]}-${dateParts[1]}`;
+                if (monthlyData.hasOwnProperty(monthStr)) {
+                    monthlyData[monthStr] += sale.amount || 0;
+                }
+            }
+        });
+        
+        // 차트 데이터 포맷
+        labels = Object.keys(monthlyData).map(monthStr => {
+            const [year, month] = monthStr.split('-');
+            return `${year}년 ${month}월`;
+        });
+        data = Object.values(monthlyData);
+    }
+    
+    return {
+        labels,
+        datasets: [{
+            label: groupBy === 'day' ? '일별 매출' : '월별 매출',
+            data: data,
+            backgroundColor: 'rgba(75, 192, 192, 0.5)',
+            borderColor: 'rgba(75, 192, 192, 1)',
+            borderWidth: 1
+        }]
+    };
+}
+
+// 매출 차트 렌더링
+function renderSalesChart(chartData, period) {
+    const canvas = document.getElementById('sales-chart');
+    
+    if (!canvas) {
+        console.error('매출 차트 캔버스를 찾을 수 없습니다.');
+        return;
+    }
+    
+    // 기존 차트가 있으면 제거
+    if (window.salesChart) {
+        window.salesChart.destroy();
+    }
+    
+    // 차트 설정
+    const chartOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            title: {
+                display: true,
+                text: period === 'today' ? '오늘의 시간별 매출' : 
+                      period === 'thisMonth' ? '이번 달 일별 매출' :
+                      period === 'lastMonth' ? '지난 달 일별 매출' :
+                      period === 'threeMonths' ? '최근 3개월 월별 매출' :
+                      period === 'sixMonths' ? '최근 6개월 월별 매출' :
+                      '최근 12개월 월별 매출',
+                font: {
+                    size: 16
+                }
+            },
+            legend: {
+                position: 'top',
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        return `${context.dataset.label}: ${context.parsed.y.toLocaleString()}원`;
+                    }
+                }
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) {
+                        return value.toLocaleString() + '원';
+                    }
+                }
+            }
+        }
+    };
+    
+    // 차트 생성
+    window.salesChart = new Chart(canvas, {
+        type: 'bar',
+        data: chartData,
+        options: chartOptions
+    });
 }
