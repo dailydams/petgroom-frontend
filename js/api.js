@@ -436,6 +436,25 @@ const API_CONFIG = {
     return apiRequest(`/api/sales/${id}`, 'DELETE');
   }
   
+  // ====== 알림톡 관련 API ======
+  
+  // 알림톡 발송
+  async function sendAlimtalk(alimtalkData) {
+    return apiRequest('/api/alimtalk/send', 'POST', alimtalkData);
+  }
+  
+  // 알림톡 발송 내역 조회
+  async function getAlimtalkHistory(params = {}) {
+    const queryParams = new URLSearchParams();
+    if (params.page) queryParams.append('page', params.page);
+    if (params.limit) queryParams.append('limit', params.limit);
+    if (params.startDate) queryParams.append('startDate', params.startDate);
+    if (params.endDate) queryParams.append('endDate', params.endDate);
+    if (params.phone) queryParams.append('phone', params.phone);
+    
+    return apiRequest(`/api/alimtalk/history?${queryParams.toString()}`);
+  }
+  
   // API 객체 생성
   const API = {
     // 인증 관련
@@ -474,6 +493,10 @@ const API_CONFIG = {
     getSalesByPeriod,
     saveSale,
     deleteSale,
+    
+    // 알림톡 관련
+    sendAlimtalk,
+    getAlimtalkHistory,
     
     // 유틸리티
     isOnline,
