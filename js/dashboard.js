@@ -64,6 +64,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         // 데이터 초기화
         await initData();
         
+        // 알림톡 템플릿 초기화
+        initAlimtalkTemplates();
+        
         // 이벤트 리스너 등록
         initEventListeners();
         
@@ -886,6 +889,18 @@ async function saveAppointment() {
         
         // 새 예약 ID 설정 (새 예약의 경우)
         const appointmentId = response.id;
+        
+        // 알림톡 발송
+        if (alimtalkOption !== 'none' && alimtalkConsent) {
+            const alimtalkResult = await sendAlimtalk({
+                ...appointmentData,
+                id: appointmentId
+            });
+            
+            if (!alimtalkResult.success) {
+                console.warn('알림톡 발송 실패:', alimtalkResult.reason);
+            }
+        }
         
         // 예약 목록 업데이트
         if (date === formatDate(currentDate)) {
@@ -2070,10 +2085,12 @@ function openAlimtalkEditModal() {
             });
         }
         
-        // 저장 버튼 이벤트 리스너
-        const saveBtn = document.getElementById('save-template-btn');
-        if (saveBtn) {
-            saveBtn.addEventListener('click', function() {
+        // 폼 제출 이벤트 리스너 추가
+        const form = document.getElementById('alimtalk-edit-form');
+        if (form) {
+            form.onsubmit = function(e) {
+                e.preventDefault();
+                
                 const selectedType = document.querySelector('input[name="template-type"]:checked').value;
                 const templateContent = templateTextarea.value;
                 
@@ -2096,13 +2113,23 @@ function openAlimtalkEditModal() {
                     console.error('템플릿 저장 중 오류:', error);
                     ToastNotification.show('템플릿 저장 중 오류가 발생했습니다.', 'error');
                 }
-            });
+                
+                return false;
+            };
         }
         
         // 취소 버튼 이벤트 리스너
-        const cancelBtn = document.getElementById('cancel-template-btn');
+        const cancelBtn = document.getElementById('cancel-template-edit-btn');
         if (cancelBtn) {
             cancelBtn.addEventListener('click', function() {
+                modal.style.display = 'none';
+            });
+        }
+        
+        // 모달 닫기 버튼 이벤트 리스너
+        const closeBtn = modal.querySelector('.close');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', function() {
                 modal.style.display = 'none';
             });
         }
@@ -2191,5 +2218,61 @@ function addCustomerPetForm() {
     } catch (error) {
         console.error('반려동물 폼 추가 중 오류:', error);
         ToastNotification.show('반려동물 폼 추가 중 오류가 발생했습니다.', 'error');
+    }
+}
+
+// 알림톡 발송
+async function sendAlimtalk(appointmentData) {
+    try {
+        const alimtalkType = appointmentData.alimtalk;
+        
+        // 알림톡 발송 안 함 옵션 확인
+        if (alimtalkType === 'none' || !appointmentData.guardian.alimtalkConsent) {
+            console.log('알림톡 발송 안함: 미발송 옵션 또는 수신 동의 없음');
+            return { success: false, reason: '발송 조건 미충족' };
+        }
+        
+        // 템플릿 가져오기
+        let template = alimtalkTemplates[alimtalkType];
+        if (!template) {
+            console.error('알림톡 템플릿을 찾을 수 없습니다:', alimtalkType);
+            return { success: false, reason: '템플릿 없음' };
+        }
+        
+        // 템플릿 변수 치환
+        const shopName = '딥펫샵'; // 매장명은 설정에서 가져오거나 고정값 사용
+        const shopPhone = '010-1234-5678'; // 매장 전화번호
+        const appointmentDate = `${appointmentData.date} ${appointmentData.startTime}`;
+        const guardianName = appointmentData.guardian.name;
+        const petNames = appointmentData.pets.map(pet => pet.name).join(', ');
+        const serviceName = appointmentData.service;
+        
+        // 치환
+        template = template
+            .replace(/{{매장명}}/g, shopName)
+            .replace(/{{예약날짜}}/g, appointmentDate)
+            .replace(/{{보호자명}}/g, guardianName)
+            .replace(/{{반려동물명}}/g, petNames)
+            .replace(/{{매장번호}}/g, shopPhone)
+            .replace(/{{서비스명}}/g, serviceName);
+            
+        // API 호출 (실제 알림톡 발송)
+        const response = await API.sendAlimtalk({
+            phone: appointmentData.guardian.phone,
+            message: template,
+            templateCode: alimtalkType,
+            appointmentId: appointmentData.id
+        });
+        
+        console.log('알림톡 발송 성공:', {
+            phone: appointmentData.guardian.phone,
+            template: alimtalkType,
+            response
+        });
+        
+        return { success: true, data: response };
+    } catch (error) {
+        console.error('알림톡 발송 중 오류:', error);
+        return { success: false, reason: error.message };
     }
 }
