@@ -310,6 +310,40 @@ const API_CONFIG = {
     return apiRequest(`/api/customers/${id}`, 'DELETE');
   }
   
+  // 고객 일괄등록
+  async function importCustomers(formData) {
+    const token = TokenService.getToken();
+    if (!token) {
+        throw new Error('로그인이 필요합니다.');
+    }
+
+    try {
+        const response = await fetch(`${API_CONFIG.BASE_URL}/api/customers/import`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            },
+            body: formData
+        });
+
+        if (response.status === 401) {
+            TokenService.removeToken();
+            window.location.href = '/login.html';
+            throw new Error('로그인이 필요합니다.');
+        }
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || '고객 정보 일괄등록 중 오류가 발생했습니다.');
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('고객 일괄등록 API 오류:', error);
+        throw error;
+    }
+  }
+  
   // ====== 예약 관련 API ======
   
   // 예약 목록 조회
@@ -424,6 +458,7 @@ const API_CONFIG = {
     getCustomerByPhone,
     saveCustomer,
     deleteCustomer,
+    importCustomers,
     
     // 예약 관련
     getAppointments,
