@@ -300,198 +300,98 @@ function initEventListeners() {
 
 // 예약관리 페이지 이벤트
 function initAppointmentEvents() {
-    // 날짜 네비게이션
-    document.getElementById('prev-nav').addEventListener('click', () => {
-        navigateCalendar(-1);
-    });
-    
-    document.getElementById('next-nav').addEventListener('click', () => {
-        navigateCalendar(1);
-    });
-    
-    // 오늘 버튼 이벤트
-    document.getElementById('today-btn').addEventListener('click', () => {
-        navigateToToday();
-    });
-    
-    // 현재 날짜 클릭 이벤트 (날짜를 클릭하면 데이트피커 표시)
-    document.getElementById('current-date').addEventListener('click', function() {
-        console.log('현재 날짜 클릭됨');
-        
-        // 기존 datepicker 제거
-        const oldInput = document.getElementById('date-picker-input');
-        if (oldInput) {
-            oldInput.remove();
-        }
-        
-        // 새로운 date input 생성
-        const dateInput = document.createElement('input');
-        dateInput.type = 'date';
-        dateInput.id = 'date-picker-input';
-        dateInput.style.position = 'absolute';
-        dateInput.style.top = '70px';
-        dateInput.style.left = '50%';
-        dateInput.style.transform = 'translateX(-50%)';
-        dateInput.style.zIndex = '1000';
-        dateInput.style.padding = '10px';
-        dateInput.style.border = '1px solid var(--gray-300)';
-        dateInput.style.borderRadius = 'var(--border-radius-md)';
-        dateInput.style.backgroundColor = 'white';
-        dateInput.style.boxShadow = 'var(--shadow-md)';
-        
-        // 오늘 날짜 설정
-        const today = new Date();
-        const year = today.getFullYear();
-        let month = (today.getMonth() + 1).toString().padStart(2, '0');
-        let day = today.getDate().toString().padStart(2, '0');
-        dateInput.value = `${year}-${month}-${day}`;
-        
-        document.body.appendChild(dateInput);
-        
-        // 포커스 아웃 시 숨김
-        dateInput.addEventListener('blur', function() {
-            setTimeout(() => {
-                dateInput.remove();
-            }, 200);
-        });
-        
-        // 날짜 선택 시 해당 날짜로 이동
-        dateInput.addEventListener('change', function(e) {
-            const selectedDate = new Date(e.target.value);
-            console.log('선택된 날짜:', selectedDate);
-            
-            if (!isNaN(selectedDate.getTime())) {
-                currentDate = selectedDate;
-                // 일간 뷰로 변경
-                currentView = 'day';
-                
-                // 뷰 버튼 업데이트
-                document.querySelectorAll('.view-btn').forEach(btn => {
-                    btn.classList.remove('active');
-                    if (btn.dataset.view === 'day') {
-                        btn.classList.add('active');
-                    }
-                });
-                
-                updateCalendarHeader();
-                loadCalendar();
-            }
-            
-            // 선택 후 숨김
-            dateInput.remove();
-        });
-        
-        // 바로 포커스 및 클릭
-        setTimeout(() => {
-            dateInput.focus();
-            dateInput.click();
-        }, 100);
-    });
-    
-    // 캘린더 뷰 전환 이벤트
-    const viewBtns = document.querySelectorAll('.view-btn');
-    viewBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            // 기존 활성화된 버튼 비활성화
-            viewBtns.forEach(b => b.classList.remove('active'));
-            
-            // 클릭한 버튼 활성화
-            btn.classList.add('active');
-            
-            // 선택한 뷰 저장 및 캘린더 로드
-            currentView = btn.dataset.view;
-            updateCalendarHeader();
-            loadCalendar();
-        });
-    });
-    
-    // 디자이너 필터 이벤트
-    document.getElementById('calendar-staff-filter').addEventListener('change', (e) => {
-        selectedStaffId = e.target.value;
-        loadCalendar();
-    });
-    
-    // 신규 예약 버튼
-    document.getElementById('new-appointment-btn').addEventListener('click', () => {
-        openAppointmentModal();
-    });
-    
-    // 예약 폼 제출
+    // 예약 저장
     const appointmentForm = document.getElementById('appointment-form');
-    appointmentForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        saveAppointment();
-    });
-    
-    // 취소 버튼
-    document.getElementById('cancel-appointment-btn').addEventListener('click', () => {
-        document.getElementById('appointment-modal').style.display = 'none';
-    });
-
-    // 서비스 버튼 클릭 이벤트
-    const serviceBtns = document.querySelectorAll('.service-btn');
-    serviceBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            // 기존 활성화된 버튼 비활성화
-            serviceBtns.forEach(b => b.classList.remove('active'));
-            
-            // 클릭한 버튼 활성화
-            btn.classList.add('active');
-            
-            // 선택한 서비스 저장
-            document.getElementById('selected-service').value = btn.dataset.service;
-            
-            // 종료 시간 자동 계산
-            updateEndTime(btn.dataset.duration);
+    if (appointmentForm) {
+        appointmentForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            try {
+                const formData = new FormData(appointmentForm);
+                const appointmentData = Object.fromEntries(formData.entries());
+                
+                // 서비스 선택 처리
+                const selectedServices = Array.from(document.querySelectorAll('.service-btn.active'))
+                    .map(btn => btn.dataset.service);
+                appointmentData.services = selectedServices;
+                
+                // 반려동물 정보 처리
+                const pets = Array.from(document.querySelectorAll('.pet-container')).map(container => {
+                    return {
+                        name: container.querySelector('[name^="pet_name"]').value,
+                        breed: container.querySelector('[name^="pet_breed"]').value,
+                        age: container.querySelector('[name^="pet_age"]').value,
+                        weight: container.querySelector('[name^="pet_weight"]').value
+                    };
+                });
+                appointmentData.pets = pets;
+                
+                await API.saveAppointment(appointmentData);
+                ToastNotification.show('예약이 저장되었습니다.', 'success');
+                closeModal('appointment-modal');
+                await loadCalendar();
+            } catch (error) {
+                console.error('예약 저장 실패:', error);
+                ToastNotification.show('예약 저장에 실패했습니다.', 'error');
+            }
         });
+    }
+
+    // 예약 상태 변경
+    document.addEventListener('click', async (e) => {
+        if (e.target.matches('.appointment-status-btn')) {
+            try {
+                const appointmentId = e.target.dataset.id;
+                const newStatus = e.target.dataset.status;
+                await API.updateAppointmentStatus(appointmentId, newStatus);
+                ToastNotification.show('예약 상태가 변경되었습니다.', 'success');
+                await loadCalendar();
+            } catch (error) {
+                console.error('예약 상태 변경 실패:', error);
+                ToastNotification.show('예약 상태 변경에 실패했습니다.', 'error');
+            }
+        }
     });
 
-    // 반려동물 추가 버튼
-    document.getElementById('add-pet-btn').addEventListener('click', addPetForm);
+    // 예약 삭제
+    document.addEventListener('click', async (e) => {
+        if (e.target.matches('.appointment-delete-btn')) {
+            try {
+                const appointmentId = e.target.dataset.id;
+                const confirmed = await ConfirmDialog.show('예약 삭제', '정말로 이 예약을 삭제하시겠습니까?');
+                
+                if (confirmed) {
+                    await API.deleteAppointment(appointmentId);
+                    ToastNotification.show('예약이 삭제되었습니다.', 'success');
+                    await loadCalendar();
+                }
+            } catch (error) {
+                console.error('예약 삭제 실패:', error);
+                ToastNotification.show('예약 삭제에 실패했습니다.', 'error');
+            }
+        }
+    });
 
-    // 고객 검색 결과 컨테이너 스타일 추가
-    const styleEl = document.createElement('style');
-    styleEl.textContent = `
-        .search-results-container {
-            position: absolute;
-            background-color: white;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            width: 100%;
-            max-height: 200px;
-            overflow-y: auto;
-            z-index: 100;
-            margin-top: 5px;
+    // 서비스 버튼 토글
+    document.addEventListener('click', (e) => {
+        if (e.target.matches('.service-btn')) {
+            e.target.classList.toggle('active');
         }
-        
-        .search-result-item {
-            padding: 8px 12px;
-            cursor: pointer;
-            border-bottom: 1px solid #eee;
-        }
-        
-        .search-result-item:hover {
-            background-color: #f5f8ff;
-        }
-        
-        .customer-name {
-            font-weight: bold;
-        }
-        
-        .customer-phone {
-            color: #666;
-            font-size: 0.9em;
-        }
-        
-        .customer-pets {
-            color: #888;
-            font-size: 0.8em;
-            margin-top: 3px;
-        }
-    `;
+    });
 
-    document.head.appendChild(styleEl);
+    // 시간 선택 처리
+    const startTimeInput = document.getElementById('appointment-start-time');
+    const endTimeInput = document.getElementById('appointment-end-time');
+    const durationSelect = document.getElementById('appointment-duration');
+
+    if (startTimeInput && endTimeInput && durationSelect) {
+        startTimeInput.addEventListener('change', () => {
+            updateEndTime(parseInt(durationSelect.value));
+        });
+
+        durationSelect.addEventListener('change', () => {
+            updateEndTime(parseInt(durationSelect.value));
+        });
+    }
 }
 
 // 고객관리 페이지 이벤트
@@ -2619,173 +2519,105 @@ async function renderSalesData(period) {
 
 // 매출 차트 업데이트
 function updateSalesChart(salesData, period) {
-    try {
-        // Chart.js 전역 레지스트리 초기화 시도
-        // (이미 등록된 차트가 있을 경우 제거)
-        if (window.Chart && window.Chart.instances) {
-            Object.keys(window.Chart.instances).forEach(id => {
-                try {
-                    const chartInstance = window.Chart.instances[id];
-                    if (chartInstance) {
-                        chartInstance.destroy();
-                    }
-                } catch (err) {
-                    console.warn('레지스트리에서 차트 제거 중 오류:', err);
-                }
-            });
-        }
-        
-        // 캔버스 요소 확인
-        const chartContainer = document.querySelector('.chart-container');
-        if (!chartContainer) {
-            console.error('차트 컨테이너를 찾을 수 없습니다.');
-            return;
-        }
-        
-        // 새 캔버스 생성 (기존 캔버스 제거)
-        chartContainer.innerHTML = '';
-        const canvas = document.createElement('canvas');
-        const uniqueId = 'sales-chart-' + Date.now();
-        canvas.id = uniqueId;
-        chartContainer.appendChild(canvas);
-        
-        // Chart.js 생성 초기 지연
-        setTimeout(() => {
-            try {
-                const ctx = canvas.getContext('2d');
-                
-                // 차트 데이터 준비
-                let labels = [];
-                let data = [];
-                
-                // 나머지 차트 데이터 준비 코드는 그대로 유지...
-                if (salesData.length === 0) {
-                    // 데이터가 없는 경우 빈 차트 표시
-                    labels = ['데이터 없음'];
-                    data = [0];
-                } else if (period === 'today') {
-                    // 시간대별로 그룹화
-                    const salesByHour = Array(24).fill(0);
-                    
-                    salesData.forEach(sale => {
-                        if (!sale.created_at) return;
-                        try {
-                            const saleDate = new Date(sale.date);
-                            const saleHour = parseInt(sale.created_at.split('T')[1].split(':')[0]);
-                            if (!isNaN(saleHour) && saleHour >= 0 && saleHour < 24) {
-                                salesByHour[saleHour] += sale.amount;
-                            }
-                        } catch(e) {
-                            console.warn('매출 데이터 파싱 오류:', e);
-                        }
-                    });
-                    
-                    labels = Array.from({ length: 24 }, (_, i) => `${i}시`);
-                    data = salesByHour;
-                    
-                } else if (period === 'thisMonth' || period === 'lastMonth') {
-                    // 일별로 그룹화
-                    const salesByDay = {};
-                    
-                    salesData.forEach(sale => {
-                        if (!sale.date || typeof sale.date !== 'string') return;
-                        try {
-                            const day = sale.date.split('-')[2]; // DD
-                            if (!salesByDay[day]) {
-                                salesByDay[day] = 0;
-                            }
-                            salesByDay[day] += sale.amount;
-                        } catch(e) {
-                            console.warn('매출 데이터 파싱 오류:', e);
-                        }
-                    });
-
-                    // 정렬된 날짜로 변환
-                    const sortedDays = Object.keys(salesByDay).sort((a, b) => parseInt(a) - parseInt(b));
-                    
-                    labels = sortedDays.map(day => `${day}일`);
-                    data = sortedDays.map(day => salesByDay[day]);
-                    
-                } else {
-                    // 월별로 그룹화
-                    const salesByMonth = {};
-                    
-                    salesData.forEach(sale => {
-                        if (!sale.date || typeof sale.date !== 'string') return;
-                        try {
-                            const monthYear = sale.date.substring(0, 7); // YYYY-MM
-                            if (!salesByMonth[monthYear]) {
-                                salesByMonth[monthYear] = 0;
-                            }
-                            salesByMonth[monthYear] += sale.amount;
-                        } catch(e) {
-                            console.warn('매출 데이터 파싱 오류:', e);
-                        }
-                    });
-                    
-                    // 정렬된 월로 변환
-                    const sortedMonths = Object.keys(salesByMonth).sort();
-                    
-                    labels = sortedMonths.map(month => {
-                        try {
-                            const [year, monthNum] = month.split('-');
-                            return `${year}년 ${monthNum}월`;
-                        } catch(e) {
-                            return month;
-                        }
-                    });
-                    data = sortedMonths.map(month => salesByMonth[month]);
-                }
-                
-                // 차트 생성
-                window.salesChart = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: '매출',
-                            data: data,
-                            borderColor: '#4e73df',
-                            backgroundColor: 'rgba(78, 115, 223, 0.1)',
-                            tension: 0.4,
-                            fill: true
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                display: false
-                            },
-                            tooltip: {
-                                callbacks: {
-                                    label: function(context) {
-                                        return `매출: ${context.parsed.y.toLocaleString()}원`;
-                                    }
-                                }
-                            }
-                        },
-                        scales: {
-                            y: {
-                                ticks: {
-                                    callback: function(value) {
-                                        return value.toLocaleString() + '원';
-                                    }
-                                }
-                            }
-                        }
-                    }
-                });
-                
-                chartInitialized = true;
-            } catch (e) {
-                console.error('차트 생성 중 오류:', e);
-            }
-        }, 50); // 50ms 지연으로 DOM 업데이트 및 이전 차트 정리 시간 확보
-    } catch (error) {
-        console.error('매출 차트 업데이트 중 오류:', error);
+    const ctx = document.getElementById('sales-chart').getContext('2d');
+    
+    // 기존 차트 제거
+    if (salesChart) {
+        salesChart.destroy();
     }
+    
+    // 데이터 포맷팅
+    const labels = salesData.map(item => item.date);
+    const values = salesData.map(item => item.amount);
+    
+    // 차트 생성
+    salesChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: '매출',
+                data: values,
+                borderColor: 'rgb(108, 99, 255)',
+                backgroundColor: 'rgba(108, 99, 255, 0.1)',
+                borderWidth: 2,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        font: {
+                            size: 14,
+                            weight: 'bold'
+                        },
+                        padding: 20
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    padding: 12,
+                    titleFont: {
+                        size: 14,
+                        weight: 'bold'
+                    },
+                    bodyFont: {
+                        size: 13
+                    },
+                    callbacks: {
+                        label: function(context) {
+                            return `매출: ${context.parsed.y.toLocaleString()}원`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return (value / 10000).toLocaleString() + '만원';
+                        },
+                        font: {
+                            size: 12,
+                            weight: 'bold'
+                        },
+                        padding: 10
+                    },
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.1)',
+                        drawBorder: false
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        font: {
+                            size: 12
+                        },
+                        padding: 10
+                    }
+                }
+            },
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            },
+            animation: {
+                duration: 1000,
+                easing: 'easeInOutQuart'
+            }
+        }
+    });
 }
 
 // 계정 목록 조회 및 렌더링
