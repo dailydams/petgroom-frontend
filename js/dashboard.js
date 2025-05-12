@@ -2403,168 +2403,123 @@ async function updateAppointmentStats() {
 }
 
 // 매출 데이터 가져오기 및 렌더링
-async function renderSalesData(period) {
-    try {
-        const staffId = document.getElementById('staff-select').value;
-        const salesData = await API.getSalesByPeriod(period, staffId);
-        
-        // 차트 컨테이너 확인 및 생성
-        let chartContainer = document.querySelector('.chart-container');
-        if (!chartContainer) {
-            chartContainer = document.createElement('div');
-            chartContainer.className = 'chart-container';
-            document.querySelector('#sales-page').appendChild(chartContainer);
-        }
-
-        // 캔버스 요소 확인 및 생성
-        let canvas = document.getElementById('sales-chart');
-        if (!canvas) {
-            canvas = document.createElement('canvas');
-            canvas.id = 'sales-chart';
-            chartContainer.appendChild(canvas);
-        }
-
-        // 차트 업데이트
-        updateSalesChart(salesData, period);
-
-        // 매출 통계 업데이트
-        const totalSales = salesData.reduce((sum, item) => sum + item.amount, 0);
-        const totalAppointments = salesData.length;
-        
-        document.getElementById('total-sales').textContent = totalSales.toLocaleString() + '원';
-        document.getElementById('total-appointments').textContent = totalAppointments + '건';
-
-        // 매출 테이블 업데이트
-        const tbody = document.querySelector('#sales-table tbody');
-        tbody.innerHTML = '';
-        
-        salesData.forEach(sale => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${new Date(sale.date).toLocaleDateString('ko-KR')}</td>
-                <td>${sale.customerName}</td>
-                <td>${sale.petName}</td>
-                <td>${sale.service}</td>
-                <td>${sale.staffName}</td>
-                <td>${sale.paymentMethod}</td>
-                <td>${sale.amount.toLocaleString()}원</td>
-            `;
-            tbody.appendChild(tr);
-        });
-    } catch (error) {
-        console.error('매출 데이터 렌더링 중 오류:', error);
-        ToastNotification.show('매출 데이터를 불러오는 중 오류가 발생했습니다.', 'error');
-    }
+async function renderSalesData() {
+  try {
+    const response = await API.getSalesStats();
+    const salesData = response.stats || [];
+    
+    // 매출 차트 업데이트
+    updateSalesChart(salesData);
+    
+    // 매출 통계 업데이트
+    const totalAmount = salesData.reduce((sum, item) => sum + (item.total_amount || 0), 0);
+    const totalCount = salesData.reduce((sum, item) => sum + (item.count || 0), 0);
+    
+    // 통계 카드 업데이트
+    document.getElementById('total-sales').textContent = totalAmount.toLocaleString() + '원';
+    document.getElementById('total-count').textContent = totalCount.toLocaleString() + '건';
+    
+  } catch (error) {
+    console.error('매출 데이터 렌더링 중 오류:', error);
+    ToastNotification.error('매출 데이터를 불러오는 중 오류가 발생했습니다.');
+  }
 }
 
-// 매출 차트 업데이트
-function updateSalesChart(salesData, period) {
-    try {
-        // 캔버스 요소 찾기
-        const canvas = document.getElementById('sales-chart');
-        if (!canvas) {
-            console.error('매출 차트 캔버스를 찾을 수 없습니다.');
-            return;
-        }
-
-        // 기존 차트 제거
-        if (window.salesChart instanceof Chart) {
-            window.salesChart.destroy();
-        }
-
-        const ctx = canvas.getContext('2d');
-        
-        // 데이터 포맷팅
-        const labels = salesData.map(item => {
-            const date = new Date(item.date);
-            return date.toLocaleDateString('ko-KR');
-        });
-        const values = salesData.map(item => item.amount);
-        
-        // 차트 생성
-        window.salesChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: '매출',
-                    data: values,
-                    borderColor: 'rgb(108, 99, 255)',
-                    backgroundColor: 'rgba(108, 99, 255, 0.1)',
-                    borderWidth: 2,
-                    pointRadius: 4,
-                    pointHoverRadius: 6,
-                    tension: 0.4,
-                    fill: true
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'top',
-                        labels: {
-                            font: {
-                                size: 14,
-                                weight: 'bold'
-                            },
-                            padding: 20
-                        }
-                    },
-                    tooltip: {
-                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                        padding: 12,
-                        titleFont: {
-                            size: 14,
-                            weight: 'bold'
-                        },
-                        bodyFont: {
-                            size: 13
-                        },
-                        callbacks: {
-                            label: function(context) {
-                                return `매출: ${context.parsed.y.toLocaleString()}원`;
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            callback: function(value) {
-                                return (value / 10000).toLocaleString() + '만원';
-                            },
-                            font: {
-                                size: 12,
-                                weight: 'bold'
-                            },
-                            padding: 10
-                        },
-                        grid: {
-                            color: 'rgba(0, 0, 0, 0.1)',
-                            drawBorder: false
-                        }
-                    },
-                    x: {
-                        grid: {
-                            display: false
-                        },
-                        ticks: {
-                            font: {
-                                size: 12
-                            },
-                            padding: 10
-                        }
-                    }
-                }
-            }
-        });
-    } catch (error) {
-        console.error('차트 업데이트 오류:', error);
-        ToastNotification.show('차트를 표시하는 중 오류가 발생했습니다.', 'error');
+function updateSalesChart(salesData) {
+  try {
+    // salesData가 배열이 아닌 경우 빈 배열로 처리
+    const data = Array.isArray(salesData) ? salesData : [];
+    
+    // 차트 컨테이너 확인 및 생성
+    let chartContainer = document.getElementById('sales-chart-container');
+    if (!chartContainer) {
+      chartContainer = document.createElement('div');
+      chartContainer.id = 'sales-chart-container';
+      chartContainer.style.height = '300px';
+      document.querySelector('.sales-chart').appendChild(chartContainer);
     }
+
+    // 캔버스 확인 및 생성
+    let canvas = document.getElementById('sales-chart');
+    if (!canvas) {
+      canvas = document.createElement('canvas');
+      canvas.id = 'sales-chart';
+      chartContainer.appendChild(canvas);
+    }
+
+    // 기존 차트 제거
+    if (window.salesChart instanceof Chart) {
+      window.salesChart.destroy();
+    }
+
+    // 차트 데이터 준비
+    const labels = data.map(item => {
+      const date = new Date(item.date);
+      return date.toLocaleDateString('ko-KR');
+    });
+    
+    const amounts = data.map(item => item.total_amount || 0);
+    const counts = data.map(item => item.count || 0);
+
+    // 새 차트 생성
+    const ctx = canvas.getContext('2d');
+    window.salesChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: '매출액',
+            data: amounts,
+            borderColor: 'rgb(75, 192, 192)',
+            tension: 0.1,
+            yAxisID: 'y'
+          },
+          {
+            label: '건수',
+            data: counts,
+            borderColor: 'rgb(255, 99, 132)',
+            tension: 0.1,
+            yAxisID: 'y1'
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+          mode: 'index',
+          intersect: false,
+        },
+        scales: {
+          y: {
+            type: 'linear',
+            display: true,
+            position: 'left',
+            title: {
+              display: true,
+              text: '매출액 (원)'
+            }
+          },
+          y1: {
+            type: 'linear',
+            display: true,
+            position: 'right',
+            title: {
+              display: true,
+              text: '건수'
+            },
+            grid: {
+              drawOnChartArea: false
+            }
+          }
+        }
+      }
+    });
+  } catch (error) {
+    console.error('차트 업데이트 오류:', error);
+    ToastNotification.error('매출 차트를 업데이트하는 중 오류가 발생했습니다.');
+  }
 }
 
 // 계정 목록 조회 및 렌더링
