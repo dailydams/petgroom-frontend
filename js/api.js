@@ -318,7 +318,7 @@ const API_CONFIG = {
     }
 
     try {
-        const response = await fetch(`${API_CONFIG.BASE_URL}/api/customers/import`, {
+        const response = await fetch(`${API_CONFIG.BASE_URL}/api/customers/bulk`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`
