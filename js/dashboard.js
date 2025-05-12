@@ -428,10 +428,54 @@ function initCustomerEvents() {
         }
     });
     
-    // 엑셀 일괄 등록 버튼
-    document.getElementById('import-customers-btn').addEventListener('click', () => {
-        ToastNotification.show('엑셀 일괄 등록 기능은 곧 추가될 예정입니다.', 'info');
-    });
+    // 엑셀 일괄 등록 버튼 이벤트
+    const importCustomersBtn = document.getElementById('import-customers-btn');
+    if (importCustomersBtn) {
+        importCustomersBtn.addEventListener('click', () => {
+            // 엑셀 템플릿 다운로드 링크 생성
+            const templateData = [
+                ['보호자명*', '연락처*', '알림톡수신동의', '보호자메모', '반려동물명*', '품종*', '몸무게(kg)*', '나이', '반려동물메모'],
+                ['홍길동', '010-1234-5678', 'Y', '특이사항 없음', '멍멍이', '말티즈', '3.5', '2', '털이 많이 빠짐'],
+                ['김철수', '010-9876-5432', 'Y', '', '냥냥이', '페르시안', '4.2', '3', '']
+            ];
+
+            // CSV 형식으로 변환
+            const csvContent = templateData.map(row => row.join(',')).join('\n');
+            const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = '고객정보_일괄등록_양식.csv';
+            link.click();
+
+            // 파일 업로드 다이얼로그 표시
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = '.csv';
+            fileInput.style.display = 'none';
+            document.body.appendChild(fileInput);
+
+            fileInput.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    try {
+                        const formData = new FormData();
+                        formData.append('file', file);
+                        
+                        // API 호출
+                        const response = await API.importCustomers(formData);
+                        ToastNotification.show('고객 정보가 성공적으로 등록되었습니다.', 'success');
+                        renderCustomersTable(); // 테이블 새로고침
+                    } catch (error) {
+                        console.error('고객 일괄등록 중 오류:', error);
+                        ToastNotification.show('고객 정보 등록 중 오류가 발생했습니다.', 'error');
+                    }
+                }
+                document.body.removeChild(fileInput);
+            });
+
+            fileInput.click();
+        });
+    }
 }
 
 // 매출관리 페이지 이벤트
