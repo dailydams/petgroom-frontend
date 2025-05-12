@@ -2276,3 +2276,60 @@ async function sendAlimtalk(appointmentData) {
         return { success: false, reason: error.message };
     }
 }
+
+// 예약 통계 업데이트
+async function updateAppointmentStats() {
+    try {
+        // 통계를 표시할 요소 확인
+        const statsContainer = document.getElementById('appointment-stats');
+        if (!statsContainer) return;
+        
+        // 현재 날짜의 예약 데이터 가져오기
+        const dateStr = formatDate(currentDate);
+        const response = await API.getAppointmentsByDate(dateStr);
+        const dailyAppointments = response.appointments || [];
+        
+        // 예약 상태별 카운트
+        const statusCounts = {
+            total: dailyAppointments.length,
+            reserved: 0,
+            confirmed: 0, 
+            completed: 0,
+            cancelled: 0
+        };
+        
+        // 각 상태별 카운트 계산
+        dailyAppointments.forEach(app => {
+            const status = app.status || 'reserved';
+            if (statusCounts[status] !== undefined) {
+                statusCounts[status]++;
+            }
+        });
+        
+        // 통계 HTML 생성 및 업데이트
+        statsContainer.innerHTML = `
+            <div class="stat-item">
+                <span class="stat-label">총 예약</span>
+                <span class="stat-value">${statusCounts.total}건</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">예약</span>
+                <span class="stat-value">${statusCounts.reserved}건</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">확정</span>
+                <span class="stat-value">${statusCounts.confirmed}건</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">완료</span>
+                <span class="stat-value">${statusCounts.completed}건</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">취소</span>
+                <span class="stat-value">${statusCounts.cancelled}건</span>
+            </div>
+        `;
+    } catch (error) {
+        console.error('예약 통계 업데이트 중 오류:', error);
+    }
+}
