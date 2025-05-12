@@ -160,6 +160,51 @@ async function initData() {
     }
 }
 
+// Chart.js 초기화 함수
+function initChartJS() {
+    if (window.Chart) {
+        // Chart.js 글로벌 설정
+        Chart.defaults.color = '#636363';
+        Chart.defaults.font.family = "'Noto Sans KR', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif";
+        Chart.defaults.font.size = 12;
+        
+        // 캔버스 픽셀 비율 설정 (레티나 디스플레이 대응)
+        Chart.defaults.devicePixelRatio = 2;
+        
+        // 반응형 설정
+        Chart.defaults.responsive = true;
+        Chart.defaults.maintainAspectRatio = false;
+        
+        // 툴팁 스타일링
+        Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(255, 255, 255, 0.95)';
+        Chart.defaults.plugins.tooltip.titleColor = '#333';
+        Chart.defaults.plugins.tooltip.bodyColor = '#666';
+        Chart.defaults.plugins.tooltip.borderColor = 'rgba(0, 0, 0, 0.1)';
+        Chart.defaults.plugins.tooltip.borderWidth = 1;
+        Chart.defaults.plugins.tooltip.padding = 10;
+        Chart.defaults.plugins.tooltip.cornerRadius = 6;
+        Chart.defaults.plugins.tooltip.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.1)';
+        Chart.defaults.plugins.tooltip.displayColors = true;
+        Chart.defaults.plugins.tooltip.usePointStyle = true;
+        Chart.defaults.plugins.tooltip.position = 'nearest';
+        
+        // 애니메이션 설정
+        Chart.defaults.animation.duration = 800;
+        Chart.defaults.animation.easing = 'easeOutQuart';
+        
+        // 범례 스타일링
+        Chart.defaults.plugins.legend.position = 'top';
+        Chart.defaults.plugins.legend.align = 'center';
+        Chart.defaults.plugins.legend.labels.boxWidth = 16;
+        Chart.defaults.plugins.legend.labels.padding = 16;
+        Chart.defaults.plugins.legend.labels.usePointStyle = true;
+        
+        console.log('Chart.js 초기화 완료');
+    } else {
+        console.warn('Chart.js가 로드되지 않았습니다.');
+    }
+}
+
 // 사이드바 이벤트 리스너
 function initSidebar() {
     const menuItems = document.querySelectorAll('.sidebar-menu a');
