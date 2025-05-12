@@ -1958,3 +1958,159 @@ function updateAlimtalkPreviews() {
         }
     }
 }
+
+// 알림톡 템플릿 관리 함수
+let alimtalkTemplates = {
+    default: `고객님,\n▷매장명 입니다.\n\n[예약] 안내드립니다.\n\n▷일시: 예약 날짜\n▷반려동물명: 반려동물명\n▷매장번호: 매장 번호`,
+    deposit: `고객님,\n▷매장명 입니다.\n\n[예약금] 안내드립니다.\n\n▷일시: 예약 날짜\n▷반려동물명: 반려동물명\n▷매장번호: 매장 번호\n\n[예약금 안내]\n계좌번호: \n예약금: 20,000원\n\n* 상담 후 30분 이내 입금주셔야 예약이 확정됩니다.\n* 당일 예약 변경, 취소시 예약금 환불이 불가합니다.\n* 예약시간 20분 경과시 자동 취소되며, 예약금 환불이 불가합니다.\n* 미용비 결제는 예약금 차감 후 결제됩니다.\n\n반려견의 건강상태 또는 미용 트라우마가 있으면 미용 전 미리 말씀 부탁드립니다.`
+};
+
+// 초기화 시 저장된 템플릿이 있으면 불러오기
+function initAlimtalkTemplates() {
+    const savedTemplates = localStorage.getItem('alimtalkTemplates');
+    if (savedTemplates) {
+        try {
+            alimtalkTemplates = JSON.parse(savedTemplates);
+        } catch (error) {
+            console.error('템플릿 로드 중 오류:', error);
+        }
+    }
+    
+    // 알림톡 옵션 변경 이벤트 리스너
+    document.querySelectorAll('input[name="alimtalk-option"]').forEach(option => {
+        option.addEventListener('change', function() {
+            // 모든 미리보기 숨기기
+            document.querySelectorAll('.alimtalk-preview').forEach(preview => {
+                preview.style.display = 'none';
+            });
+            
+            // 선택된 옵션의 미리보기만 표시
+            if (this.value !== 'none') {
+                const previewEl = document.getElementById(`alimtalk-${this.value}-preview`);
+                if (previewEl) {
+                    previewEl.style.display = 'block';
+                }
+            }
+        });
+    });
+    
+    // 미리보기 업데이트
+    updateAlimtalkPreviews();
+}
+
+// 알림톡 수정 모달 열기
+function openAlimtalkEditModal() {
+    try {
+        const modal = document.getElementById('alimtalk-edit-modal');
+        if (!modal) {
+            console.error('알림톡 수정 모달을 찾을 수 없습니다');
+            return;
+        }
+        
+        // 현재 선택된 템플릿 타입 확인
+        const selectedType = document.querySelector('input[name="alimtalk-option"]:checked').value;
+        
+        // 모달 폼 내 선택된 템플릿 타입 라디오 버튼 체크
+        const typeRadio = document.getElementById(`edit-template-${selectedType}`);
+        if (typeRadio) {
+            typeRadio.checked = true;
+        }
+        
+        // 텍스트 영역에 현재 템플릿 내용 표시
+        const templateTextarea = document.getElementById('template-content');
+        if (templateTextarea) {
+            templateTextarea.value = alimtalkTemplates[selectedType] || '';
+        }
+        
+        // 미리보기 업데이트
+        const previewEl = document.getElementById('edit-template-preview');
+        if (previewEl) {
+            const contentContainer = previewEl.querySelector('.alimtalk-content');
+            if (contentContainer) {
+                contentContainer.innerHTML = (alimtalkTemplates[selectedType] || '')
+                    .replace(/\n/g, '</p><p>')
+                    .replace(/^<\/p>/, '')
+                    .replace(/<p>$/, '');
+            }
+        }
+        
+        // 템플릿 타입 변경 이벤트 리스너
+        document.querySelectorAll('input[name="template-type"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                const type = this.value;
+                const templateContent = alimtalkTemplates[type] || '';
+                
+                // 텍스트 영역 업데이트
+                if (templateTextarea) {
+                    templateTextarea.value = templateContent;
+                }
+                
+                // 미리보기 업데이트
+                if (previewEl && contentContainer) {
+                    contentContainer.innerHTML = templateContent
+                        .replace(/\n/g, '</p><p>')
+                        .replace(/^<\/p>/, '')
+                        .replace(/<p>$/, '');
+                }
+            });
+        });
+        
+        // 텍스트 영역 변경 이벤트 리스너 (실시간 미리보기)
+        if (templateTextarea) {
+            templateTextarea.addEventListener('input', function() {
+                const previewContent = this.value;
+                const contentContainer = previewEl?.querySelector('.alimtalk-content');
+                
+                if (contentContainer) {
+                    contentContainer.innerHTML = previewContent
+                        .replace(/\n/g, '</p><p>')
+                        .replace(/^<\/p>/, '')
+                        .replace(/<p>$/, '');
+                }
+            });
+        }
+        
+        // 저장 버튼 이벤트 리스너
+        const saveBtn = document.getElementById('save-template-btn');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', function() {
+                const selectedType = document.querySelector('input[name="template-type"]:checked').value;
+                const templateContent = templateTextarea.value;
+                
+                // 템플릿 객체 업데이트
+                alimtalkTemplates[selectedType] = templateContent;
+                
+                // 로컬 스토리지에 저장
+                try {
+                    localStorage.setItem('alimtalkTemplates', JSON.stringify(alimtalkTemplates));
+                    
+                    // 미리보기 업데이트
+                    updateAlimtalkPreviews();
+                    
+                    // 모달 닫기
+                    modal.style.display = 'none';
+                    
+                    // 알림
+                    ToastNotification.show('알림톡 템플릿이 저장되었습니다.', 'success');
+                } catch (error) {
+                    console.error('템플릿 저장 중 오류:', error);
+                    ToastNotification.show('템플릿 저장 중 오류가 발생했습니다.', 'error');
+                }
+            });
+        }
+        
+        // 취소 버튼 이벤트 리스너
+        const cancelBtn = document.getElementById('cancel-template-btn');
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', function() {
+                modal.style.display = 'none';
+            });
+        }
+        
+        // 모달 표시
+        modal.style.display = 'block';
+    } catch (error) {
+        console.error('알림톡 수정 모달 열기 중 오류:', error);
+        ToastNotification.show('알림톡 수정 창을 여는 중 오류가 발생했습니다.', 'error');
+    }
+}
