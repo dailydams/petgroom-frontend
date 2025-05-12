@@ -2114,3 +2114,82 @@ function openAlimtalkEditModal() {
         ToastNotification.show('알림톡 수정 창을 여는 중 오류가 발생했습니다.', 'error');
     }
 }
+
+// 고객의 반려동물 폼 추가
+function addCustomerPetForm() {
+    try {
+        const petContainers = document.getElementById('customer-pet-containers');
+        if (!petContainers) {
+            console.error('반려동물 컨테이너를 찾을 수 없습니다.');
+            return;
+        }
+        
+        const petCount = petContainers.childElementCount + 1;
+        
+        const newPetContainer = document.createElement('div');
+        newPetContainer.className = 'pet-container';
+        newPetContainer.innerHTML = `
+            <div class="pet-header">
+                <h4>반려동물 #${petCount}</h4>
+                <button type="button" class="btn remove-pet-btn" data-tippy-content="반려동물 삭제">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="customer-pet-name-${petCount}">반려동물명</label>
+                    <input type="text" id="customer-pet-name-${petCount}" name="pet_name_${petCount}" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="customer-pet-breed-${petCount}">품종</label>
+                    <input type="text" id="customer-pet-breed-${petCount}" name="pet_breed_${petCount}" class="form-control" required>
+                </div>
+            </div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="customer-pet-weight-${petCount}">몸무게(kg)</label>
+                    <input type="number" id="customer-pet-weight-${petCount}" name="pet_weight_${petCount}" class="form-control" step="0.1" required>
+                </div>
+                <div class="form-group">
+                    <label for="customer-pet-age-${petCount}">나이</label>
+                    <input type="number" id="customer-pet-age-${petCount}" name="pet_age_${petCount}" class="form-control">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="customer-pet-memo-${petCount}">특이사항</label>
+                <textarea id="customer-pet-memo-${petCount}" name="pet_memo_${petCount}" class="form-control"></textarea>
+            </div>
+        `;
+        
+        petContainers.appendChild(newPetContainer);
+        
+        // 반려동물 삭제 버튼 이벤트 추가
+        const removeBtn = newPetContainer.querySelector('.remove-pet-btn');
+        if (removeBtn) {
+            removeBtn.addEventListener('click', function() {
+                petContainers.removeChild(newPetContainer);
+                
+                // 번호 재정렬
+                const petContainerElements = petContainers.querySelectorAll('.pet-container');
+                petContainerElements.forEach((container, index) => {
+                    const headerEl = container.querySelector('.pet-header h4');
+                    if (headerEl) {
+                        headerEl.textContent = `반려동물 #${index + 1}`;
+                    }
+                });
+            });
+        }
+        
+        // 툴팁 초기화 (Tippy.js 사용 시)
+        if (window.tippy) {
+            tippy('[data-tippy-content]', {
+                theme: 'petgroom',
+                placement: 'top',
+                arrow: true
+            });
+        }
+    } catch (error) {
+        console.error('반려동물 폼 추가 중 오류:', error);
+        ToastNotification.show('반려동물 폼 추가 중 오류가 발생했습니다.', 'error');
+    }
+}
