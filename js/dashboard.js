@@ -428,29 +428,14 @@ function initCustomerEvents() {
         }
     });
     
-    // 엑셀 일괄 등록 버튼 이벤트
+    // 엑셀 일괄등록 버튼 이벤트
     const importCustomersBtn = document.getElementById('import-customers-btn');
     if (importCustomersBtn) {
         importCustomersBtn.addEventListener('click', () => {
-            // 엑셀 템플릿 다운로드 링크 생성
-            const templateData = [
-                ['보호자명*', '연락처*', '알림톡수신동의', '보호자메모', '반려동물명*', '품종*', '몸무게(kg)*', '나이', '반려동물메모'],
-                ['홍길동', '010-1234-5678', 'Y', '특이사항 없음', '멍멍이', '말티즈', '3.5', '2', '털이 많이 빠짐'],
-                ['김철수', '010-9876-5432', 'Y', '', '냥냥이', '페르시안', '4.2', '3', '']
-            ];
-
-            // CSV 형식으로 변환
-            const csvContent = templateData.map(row => row.join(',')).join('\n');
-            const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = '고객정보_일괄등록_양식.csv';
-            link.click();
-
             // 파일 업로드 다이얼로그 표시
             const fileInput = document.createElement('input');
             fileInput.type = 'file';
-            fileInput.accept = '.csv';
+            fileInput.accept = '.csv,.xlsx,.xls';
             fileInput.style.display = 'none';
             document.body.appendChild(fileInput);
 
@@ -2420,144 +2405,55 @@ async function updateAppointmentStats() {
 // 매출 데이터 가져오기 및 렌더링
 async function renderSalesData(period) {
     try {
-        LoadingIndicator.show('매출 데이터를 불러오는 중...');
+        const staffId = document.getElementById('staff-select').value;
+        const salesData = await API.getSalesByPeriod(period, staffId);
         
-        // 기존 차트 객체가 있으면 미리 정리
-        if (window.salesChart instanceof Chart) {
-            try {
-                window.salesChart.destroy();
-                window.salesChart = null;
-            } catch (e) {
-                console.warn('차트 정리 중 오류:', e);
-            }
+        // 차트 컨테이너 확인 및 생성
+        let chartContainer = document.querySelector('.chart-container');
+        if (!chartContainer) {
+            chartContainer = document.createElement('div');
+            chartContainer.className = 'chart-container';
+            document.querySelector('#sales-page').appendChild(chartContainer);
         }
-        
-        // Canvas 초기화
-        const canvas = document.getElementById('sales-chart');
-        if (canvas) {
-            try {
-                // 차트 ID 재설정 - 충돌 방지
-                canvas.id = 'sales-chart-' + Date.now();
-                const ctx = canvas.getContext('2d');
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-            } catch (e) {
-                console.warn('캔버스 초기화 중 오류:', e);
-            }
+
+        // 캔버스 요소 확인 및 생성
+        let canvas = document.getElementById('sales-chart');
+        if (!canvas) {
+            canvas = document.createElement('canvas');
+            canvas.id = 'sales-chart';
+            chartContainer.appendChild(canvas);
         }
+
+        // 차트 업데이트
+        updateSalesChart(salesData, period);
+
+        // 매출 통계 업데이트
+        const totalSales = salesData.reduce((sum, item) => sum + item.amount, 0);
+        const totalAppointments = salesData.length;
         
-        // 기간에 따른 시작일, 종료일 계산
-        const today = new Date();
-        let startDate, endDate;
-        
-        switch (period) {
-            case 'today':
-                startDate = formatDate(today);
-                endDate = formatDate(today);
-                break;
-            case 'thisMonth':
-                startDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`;
-                endDate = formatDate(today);
-                break;
-            case 'lastMonth':
-                const lastMonth = new Date(today);
-                lastMonth.setMonth(lastMonth.getMonth() - 1);
-                startDate = `${lastMonth.getFullYear()}-${String(lastMonth.getMonth() + 1).padStart(2, '0')}-01`;
-                endDate = `${lastMonth.getFullYear()}-${String(lastMonth.getMonth() + 1).padStart(2, '0')}-${new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0).getDate()}`;
-                break;
-            case 'threeMonths':
-                const threeMonthsAgo = new Date(today);
-                threeMonthsAgo.setMonth(today.getMonth() - 3);
-                startDate = formatDate(threeMonthsAgo);
-                endDate = formatDate(today);
-                break;
-            case 'sixMonths':
-                const sixMonthsAgo = new Date(today);
-                sixMonthsAgo.setMonth(today.getMonth() - 6);
-                startDate = formatDate(sixMonthsAgo);
-                endDate = formatDate(today);
-                break;
-            case 'year':
-                const oneYearAgo = new Date(today);
-                oneYearAgo.setFullYear(today.getFullYear() - 1);
-                startDate = formatDate(oneYearAgo);
-                endDate = formatDate(today);
-                break;
-            default:
-                startDate = formatDate(today);
-                endDate = formatDate(today);
-        }
-        
-        // 담당자 필터
-        const selectedStaffId = document.getElementById('staff-select').value;
-        
-        // API로 매출 데이터 가져오기
-        let salesResponse;
-        try {
-            salesResponse = await API.getSalesByPeriod(startDate, endDate, selectedStaffId);
-        } catch (apiError) {
-            console.error('매출 API 호출 오류:', apiError);
-            ToastNotification.show(`매출 데이터를 가져오는 중 오류가 발생했습니다: ${apiError.message}`, 'error');
-            LoadingIndicator.hide();
-            return;
-        }
-        
-        // 매출 데이터 및 통계
-        const filteredSales = salesResponse.sales || [];
-        const summary = salesResponse.summary || { totalAmount: 0, count: 0 };
-        
-        // 통계 표시
-        document.getElementById('total-sales').textContent = summary.totalAmount.toLocaleString() + '원';
-        document.getElementById('total-appointments').textContent = summary.count + '건';
-        
-        // 취소된 예약 수 조회 (별도 API가 필요할 수 있음)
-        document.getElementById('total-canceled').textContent = '0건'; // 추후 API로 가져오기
-        
-        // 매출 데이터 테이블 렌더링
+        document.getElementById('total-sales').textContent = totalSales.toLocaleString() + '원';
+        document.getElementById('total-appointments').textContent = totalAppointments + '건';
+
+        // 매출 테이블 업데이트
         const tbody = document.querySelector('#sales-table tbody');
         tbody.innerHTML = '';
         
-        if (filteredSales.length === 0) {
+        salesData.forEach(sale => {
             const tr = document.createElement('tr');
-            tr.innerHTML = '<td colspan="7" class="text-center">해당 기간에 매출 데이터가 없습니다.</td>';
+            tr.innerHTML = `
+                <td>${new Date(sale.date).toLocaleDateString('ko-KR')}</td>
+                <td>${sale.customerName}</td>
+                <td>${sale.petName}</td>
+                <td>${sale.service}</td>
+                <td>${sale.staffName}</td>
+                <td>${sale.paymentMethod}</td>
+                <td>${sale.amount.toLocaleString()}원</td>
+            `;
             tbody.appendChild(tr);
-        } else {
-            filteredSales.forEach(sale => {
-                try {
-                    const tr = document.createElement('tr');
-                    
-                    const date = new Date(sale.date).toLocaleDateString('ko-KR');
-                    
-                    tr.innerHTML = `
-                        <td>${date}</td>
-                        <td>${sale.customer && sale.customer.name ? sale.customer.name : '알 수 없음'}</td>
-                        <td>${(sale.pets || []).map(p => p.name).join(', ')}</td>
-                        <td>${sale.service || '-'}</td>
-                        <td>${sale.staff && sale.staff.name ? sale.staff.name : '알 수 없음'}</td>
-                        <td>${sale.payment_method || '-'}</td>
-                        <td>${sale.amount.toLocaleString()}원</td>
-                    `;
-                    
-                    tbody.appendChild(tr);
-                } catch (itemError) {
-                    console.warn('매출 항목 렌더링 오류:', itemError);
-                }
-            });
-        }
-        
-        // 매출 차트 안전하게 업데이트
-        try {
-            await new Promise(resolve => setTimeout(resolve, 100)); // 잠시 지연
-            updateSalesChart(filteredSales, period);
-        } catch (chartError) {
-            console.error('차트 업데이트 오류:', chartError);
-            ToastNotification.show('차트를 표시하는 중 오류가 발생했습니다.', 'error');
-        }
-        
-        LoadingIndicator.hide();
+        });
     } catch (error) {
-        LoadingIndicator.hide();
         console.error('매출 데이터 렌더링 중 오류:', error);
-        ToastNotification.show(`매출 데이터를 불러오는 중 오류가 발생했습니다: ${error.message}`, 'error');
+        ToastNotification.show('매출 데이터를 불러오는 중 오류가 발생했습니다.', 'error');
     }
 }
 
