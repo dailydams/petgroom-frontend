@@ -84,8 +84,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             // 기본 캘린더 로드
             await loadCalendar();
         } else {
-            // 로그인 페이지로 리다이렉트
-            window.location.href = 'login.html';
+            // 로그인 페이지로 리디렉트
+            window.location.href = 'index.html';
         }
     } catch (error) {
         console.error('초기화 중 오류:', error);
