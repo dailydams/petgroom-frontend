@@ -428,33 +428,9 @@ function initAppointmentEvents() {
             // 클릭한 버튼 활성화
             e.target.classList.add('active');
             
-            // 서비스 이름과 기본 시간 설정
+            // 서비스 이름과 duration 속성 가져오기
             const service = e.target.dataset.service;
-            let duration = 30; // 기본 30분
-            
-            // 서비스별 기본 시간 설정
-            switch (service) {
-                case '목욕':
-                    duration = 30;
-                    break;
-                case '부분+목욕':
-                    duration = 60;
-                    break;
-                case '부분+목욕+얼컷':
-                    duration = 60;
-                    break;
-                case '전체미용':
-                    duration = 120;
-                    break;
-                case '스포팅':
-                    duration = 180;
-                    break;
-                case '전체가위컷':
-                    duration = 180;
-                    break;
-                default:
-                    duration = 30;
-            }
+            const duration = parseInt(e.target.dataset.duration) || 30; // 기본값 30분
             
             // hidden input에 서비스 이름 저장
             const selectedServiceInput = document.getElementById('selected-service');
@@ -462,14 +438,8 @@ function initAppointmentEvents() {
                 selectedServiceInput.value = service;
             }
             
-            // 시간 선택 드롭다운에 표시 및 선택
-            const durationSelect = document.getElementById('appointment-duration');
-            if (durationSelect) {
-                durationSelect.value = duration;
-                
-                // 종료 시간 업데이트
-                updateEndTime(duration);
-            }
+            // 종료 시간 업데이트
+            updateEndTime(duration);
         }
     });
 
