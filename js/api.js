@@ -133,6 +133,17 @@ const API_CONFIG = {
         }
         
         // API 에러 처리
+        if (response.status === 401) {
+          // 토큰이 만료되었거나 유효하지 않은 경우
+          TokenService.removeToken();
+          window.location.href = '/login.html';
+          throw new Error('로그인이 필요합니다.');
+        }
+        
+        if (response.status === 403) {
+          throw new Error('관리자 권한이 필요합니다.');
+        }
+        
         if (!response.ok) {
           throw new Error(result.error || '오류가 발생했습니다');
         }
@@ -249,11 +260,21 @@ const API_CONFIG = {
   
   // 계정 추가/수정
   async function saveUser(userData) {
+    // 현재 사용자의 권한 확인
+    const currentUser = await getMe();
+    if (currentUser.role !== 'admin') {
+      throw new Error('관리자 권한이 필요합니다.');
+    }
     return apiRequest('/api/users', 'POST', userData);
   }
   
   // 계정 삭제
   async function deleteUser(id) {
+    // 현재 사용자의 권한 확인
+    const currentUser = await getMe();
+    if (currentUser.role !== 'admin') {
+      throw new Error('관리자 권한이 필요합니다.');
+    }
     return apiRequest(`/api/users/${id}`, 'DELETE');
   }
   
