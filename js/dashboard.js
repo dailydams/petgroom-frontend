@@ -16,6 +16,23 @@ let isLoading = false;
 let salesChart = null;
 let chartInitialized = false;
 
+// 매출 기간 라벨
+const periodLabels = {
+    'today': '오늘의 시간별 매출',
+    'thisMonth': '이번 달 일별 매출',
+    'lastMonth': '지난 달 일별 매출',
+    'threeMonths': '최근 3개월 월별 매출',
+    'sixMonths': '최근 6개월 월별 매출',
+    'year': '최근 12개월 월별 매출'
+};
+
+// 알림톡 템플릿
+const alimtalkTemplates = {
+    'reservation': '안녕하세요, {{매장명}}입니다.\n{{보호자명}} 고객님, {{예약날짜}}에 {{반려동물명}}의 {{서비스명}} 예약이 완료되었습니다.\n문의사항은 {{매장번호}}로 연락주세요.',
+    'reminder': '안녕하세요, {{매장명}}입니다.\n{{보호자명}} 고객님, 내일 {{예약날짜}}에 {{반려동물명}}의 {{서비스명}} 예약이 있습니다.\n변경이나 취소는 {{매장번호}}로 연락주세요.',
+    'completed': '안녕하세요, {{매장명}}입니다.\n{{보호자명}} 고객님, {{반려동물명}}의 {{서비스명}}이 완료되었습니다.\n다음 방문도 함께 하겠습니다.\n문의사항은 {{매장번호}}로 연락주세요.'
+};
+
 // DOM이 로드된 후 실행
 document.addEventListener('DOMContentLoaded', async () => {
     try {
@@ -42,51 +59,37 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
         
-        // 인증 확인
-        const token = sessionStorage.getItem('token');
-        const userJson = sessionStorage.getItem('currentUser');
-        
-        if (!token || !userJson) {
-            // 로그인하지 않은 경우 로그인 페이지로 이동
-            window.location.href = 'index.html';
-            return;
-        }
-
-        currentUser = JSON.parse(userJson);
-        
-        // 사용자 이름 표시
-        document.getElementById('user-name').textContent = currentUser.name;
-        document.getElementById('sidebar-user-name').textContent = currentUser.name;
-        
-        // 로딩 인디케이터 표시
-        LoadingIndicator.show('데이터를 불러오는 중...');
-        
-        // 데이터 초기화
-        await initData();
-        
-        // 알림톡 템플릿 초기화
-        initAlimtalkTemplates();
-        
-        // 이벤트 리스너 등록
-        initEventListeners();
-        
-        // 사이드바 메뉴 활성화
-        initSidebar();
-        
-        // 초기 페이지 로드 (예약관리)
-        updateCalendarHeader();
-        initCalendarView();
-        await loadCalendar();
-        
-        // 네트워크 상태 감지 초기화
+        // 네트워크 상태 모니터링 초기화
         initNetworkStatus();
         
-        // 로딩 인디케이터 숨김
-        LoadingIndicator.hide();
+        // 로그인 상태 확인
+        const isLoggedIn = await API.getMe();
+        
+        if (isLoggedIn.success) {
+            // 사이드바 초기화
+            initSidebar();
+            
+            // 데이터 초기화
+            await initData();
+            
+            // 알림톡 템플릿 초기화
+            initAlimtalkTemplates();
+            
+            // 이벤트 리스너 초기화
+            initEventListeners();
+            
+            // 캘린더 초기화
+            initCalendarView();
+            
+            // 기본 캘린더 로드
+            await loadCalendar();
+        } else {
+            // 로그인 페이지로 리다이렉트
+            window.location.href = 'login.html';
+        }
     } catch (error) {
-        LoadingIndicator.hide();
-        ToastNotification.show(`초기화 중 오류가 발생했습니다: ${error.message}`, 'error');
-        console.error('초기화 오류:', error);
+        console.error('초기화 중 오류:', error);
+        ToastNotification.show('애플리케이션 초기화 중 오류가 발생했습니다.', 'error');
     }
 });
 
@@ -653,6 +656,24 @@ function initCalendarView() {
                 option.textContent = staff.name;
                 staffSelect.appendChild(option);
             }
+        });
+        
+        // 뷰 전환 버튼 이벤트 리스너 추가
+        document.querySelectorAll('.view-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                // 기존 버튼 모두 비활성화
+                document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+                
+                // 클릭한 버튼 활성화
+                this.classList.add('active');
+                
+                // 뷰 변경
+                currentView = this.dataset.view;
+                
+                // 캘린더 헤더 업데이트 및 캘린더 다시 로드
+                updateCalendarHeader();
+                loadCalendar();
+            });
         });
     } catch (error) {
         console.error('캘린더 초기화 중 오류:', error);
@@ -1243,10 +1264,12 @@ async function loadWeekView() {
             dayColumn.className = 'week-day';
             dayColumn.dataset.date = dateStr;
             
-            // 날짜 클릭 시 해당 날짜의 일간 뷰로 이동
-            dayColumn.addEventListener('click', () => {
-                // 날짜 클릭 시 해당 날짜의 예약 모달 바로 표시
-                openAppointmentModal(null, null, date);
+            // 날짜 클릭 시 해당 날짜의 예약 모달 바로 표시
+            dayColumn.addEventListener('click', (e) => {
+                if (e.target === dayColumn) {  // 날짜 영역 자체를 클릭했을 때만
+                    const clickDate = new Date(dateStr);
+                    openAppointmentModal(null, null, clickDate);
+                }
             });
             
             dayColumns.push(dayColumn);
@@ -1369,7 +1392,7 @@ async function loadMonthView() {
             ToastNotification.show(`월간 예약 정보를 불러오는 중 오류가 발생했습니다: ${error.message}`, 'error');
         }
         
-        // 날짜별로 예약 정리
+        // 날짜별로 예약 그룹화
         const appointmentsByDate = {};
         monthAppointments.forEach(app => {
             if (!appointmentsByDate[app.date]) {
@@ -1378,127 +1401,93 @@ async function loadMonthView() {
             appointmentsByDate[app.date].push(app);
         });
         
-        // 월간 달력 생성
-        let iterDate = new Date(firstWeekStart);
-        const today = new Date();
+        // 날짜 그리드 생성
+        let currentDate = new Date(firstWeekStart);
         
-        // 모든 날짜 요소를 한꺼번에 생성
-        const dayElements = [];
-        
-        while (iterDate <= lastWeekEnd) {
-            const dayDate = new Date(iterDate);
-            const dateStr = formatDate(dayDate);
+        // 주 단위로 그리드 생성
+        while (currentDate <= lastWeekEnd) {
+            const weekRow = document.createElement('div');
+            weekRow.className = 'month-week';
             
-            const dayElement = document.createElement('div');
-            dayElement.className = 'month-day';
-            
-            // 현재 월이 아닌 경우 스타일 변경
-            if (dayDate.getMonth() !== currentDate.getMonth()) {
-                dayElement.classList.add('other-month');
-            }
-            
-            // 오늘 날짜 강조
-            if (dayDate.getDate() === today.getDate() && 
-                dayDate.getMonth() === today.getMonth() && 
-                dayDate.getFullYear() === today.getFullYear()) {
-                dayElement.classList.add('today');
-            }
-            
-            const dayHeader = document.createElement('div');
-            dayHeader.className = 'month-day-header';
-            dayHeader.textContent = dayDate.getDate();
-            
-            const dayContent = document.createElement('div');
-            dayContent.className = 'month-day-content';
-            dayContent.dataset.date = dateStr;
-            
-            dayElement.appendChild(dayHeader);
-            dayElement.appendChild(dayContent);
-            
-            // 날짜 클릭 시 해당 날짜의 예약 모달 바로 표시
-            dayElement.addEventListener('click', () => {
-                // 날짜 클릭 시 해당 날짜의 예약 모달 바로 표시
-                openAppointmentModal(null, null, dayDate);
-            });
-            
-            dayElements.push({
-                element: dayElement,
-                date: dayDate,
-                dateStr
-            });
-            
-            // 다음 날짜로
-            iterDate.setDate(iterDate.getDate() + 1);
-        }
-        
-        // 모든 날짜 요소를 DOM에 한꺼번에 추가
-        for (const dayData of dayElements) {
-            monthBody.appendChild(dayData.element);
-        }
-        
-        // 각 날짜에 예약 정보 추가 (DOM 추가 후 비동기로 처리)
-        setTimeout(() => {
-            for (const dayData of dayElements) {
-                const { element, dateStr } = dayData;
-                const dayContent = element.querySelector('.month-day-content');
+            // 일주일의 각 날짜
+            for (let i = 0; i < 7; i++) {
+                const dateCell = document.createElement('div');
+                dateCell.className = 'month-day';
                 
-                // 해당 날짜의 예약이 있는 경우
+                const dateStr = formatDate(currentDate);
+                
+                // 해당 월이 아닌 날짜는 흐리게 표시
+                if (currentDate.getMonth() !== firstDay.getMonth()) {
+                    dateCell.classList.add('other-month');
+                }
+                
+                // 오늘 날짜 강조
+                const today = new Date();
+                if (currentDate.getDate() === today.getDate() && 
+                    currentDate.getMonth() === today.getMonth() && 
+                    currentDate.getFullYear() === today.getFullYear()) {
+                    dateCell.classList.add('today');
+                }
+                
+                // 날짜 표시
+                const dateHeader = document.createElement('div');
+                dateHeader.className = 'day-header';
+                dateHeader.textContent = currentDate.getDate();
+                dateCell.appendChild(dateHeader);
+                
+                // 해당 날짜의 예약 표시
                 const dayAppointments = appointmentsByDate[dateStr] || [];
                 
-                // 최대 3개까지만 표시
-                const maxDisplay = 3;
+                // 예약 컨테이너 생성
+                const appointmentsContainer = document.createElement('div');
+                appointmentsContainer.className = 'day-appointments';
                 
-                for (let i = 0; i < Math.min(dayAppointments.length, maxDisplay); i++) {
-                    const app = dayAppointments[i];
+                // 최대 3개까지만 직접 표시
+                const visibleAppointments = dayAppointments.slice(0, 3);
+                visibleAppointments.forEach(app => {
                     const appointmentElement = document.createElement('div');
                     appointmentElement.className = `month-appointment status-${app.status}`;
-                    appointmentElement.textContent = `${app.startTime} ${app.guardian.name}`;
+                    appointmentElement.innerHTML = `${app.startTime} ${app.guardian.name}`;
                     
-                    // 예약 클릭 이벤트
                     appointmentElement.addEventListener('click', (e) => {
-                        e.stopPropagation(); // 날짜 클릭 이벤트 방지
+                        e.stopPropagation();
                         openSaleModal(app);
                     });
                     
-                    dayContent.appendChild(appointmentElement);
+                    appointmentsContainer.appendChild(appointmentElement);
+                });
+                
+                // 추가 예약이 있는 경우 표시
+                if (dayAppointments.length > 3) {
+                    const moreElement = document.createElement('div');
+                    moreElement.className = 'more-appointments';
+                    moreElement.textContent = `외 ${dayAppointments.length - 3}건`;
+                    appointmentsContainer.appendChild(moreElement);
                 }
                 
-                // 추가 예약이 있으면 +N 표시
-                if (dayAppointments.length > maxDisplay) {
-                    const moreElement = document.createElement('div');
-                    moreElement.className = 'month-appointment more';
-                    moreElement.textContent = `+${dayAppointments.length - maxDisplay}건 더보기`;
-                    
-                    // 더보기 클릭 시 일간 뷰로 전환
-                    moreElement.addEventListener('click', (e) => {
-                        e.stopPropagation(); // 날짜 클릭 이벤트 방지
-                        
-                        currentDate = new Date(dayData.date);
-                        currentView = 'day';
-                        
-                        // 뷰 버튼 업데이트
-                        document.querySelectorAll('.view-btn').forEach(btn => {
-                            btn.classList.remove('active');
-                            if (btn.dataset.view === 'day') {
-                                btn.classList.add('active');
-                            }
-                        });
-                        
-                        updateCalendarHeader();
-                        loadCalendar();
-                    });
-                    
-                    dayContent.appendChild(moreElement);
-                }
+                dateCell.appendChild(appointmentsContainer);
+                
+                // 날짜 클릭 시 신규 예약 모달 오픈
+                dateCell.addEventListener('click', () => {
+                    // 날짜를 Date 객체로 변환
+                    const clickDate = new Date(dateStr);
+                    openAppointmentModal(null, null, clickDate);
+                });
+                
+                weekRow.appendChild(dateCell);
+                
+                // 다음 날짜로 이동
+                currentDate.setDate(currentDate.getDate() + 1);
             }
             
-            LoadingIndicator.hide();
-        }, 0);
+            monthBody.appendChild(weekRow);
+        }
         
+        LoadingIndicator.hide();
     } catch (error) {
         LoadingIndicator.hide();
-        console.error('월간 예약 조회 중 오류:', error);
-        ToastNotification.show(`월간 예약 정보를 불러오는 중 오류가 발생했습니다: ${error.message}`, 'error');
+        console.error('월간 캘린더 로드 중 오류:', error);
+        ToastNotification.show(`월간 캘린더를 불러오는 중 오류가 발생했습니다: ${error.message}`, 'error');
     }
 }
 
@@ -2012,17 +2001,23 @@ function updateAlimtalkPreviews() {
 }
 
 // 알림톡 템플릿 관리 함수
-let alimtalkTemplates = {
-    default: `고객님,\n▷매장명 입니다.\n\n[예약] 안내드립니다.\n\n▷일시: 예약 날짜\n▷반려동물명: 반려동물명\n▷매장번호: 매장 번호`,
-    deposit: `고객님,\n▷매장명 입니다.\n\n[예약금] 안내드립니다.\n\n▷일시: 예약 날짜\n▷반려동물명: 반려동물명\n▷매장번호: 매장 번호\n\n[예약금 안내]\n계좌번호: \n예약금: 20,000원\n\n* 상담 후 30분 이내 입금주셔야 예약이 확정됩니다.\n* 당일 예약 변경, 취소시 예약금 환불이 불가합니다.\n* 예약시간 20분 경과시 자동 취소되며, 예약금 환불이 불가합니다.\n* 미용비 결제는 예약금 차감 후 결제됩니다.\n\n반려견의 건강상태 또는 미용 트라우마가 있으면 미용 전 미리 말씀 부탁드립니다.`
-};
-
 // 초기화 시 저장된 템플릿이 있으면 불러오기
 function initAlimtalkTemplates() {
+    // 기본 템플릿 설정 (없을 경우)
+    if (!alimtalkTemplates.default) {
+        alimtalkTemplates.default = `고객님,\n▷매장명 입니다.\n\n[예약] 안내드립니다.\n\n▷일시: 예약 날짜\n▷반려동물명: 반려동물명\n▷매장번호: 매장 번호`;
+    }
+    
+    if (!alimtalkTemplates.deposit) {
+        alimtalkTemplates.deposit = `고객님,\n▷매장명 입니다.\n\n[예약금] 안내드립니다.\n\n▷일시: 예약 날짜\n▷반려동물명: 반려동물명\n▷매장번호: 매장 번호\n\n[예약금 안내]\n계좌번호: \n예약금: 20,000원\n\n* 상담 후 30분 이내 입금주셔야 예약이 확정됩니다.\n* 당일 예약 변경, 취소시 예약금 환불이 불가합니다.\n* 예약시간 20분 경과시 자동 취소되며, 예약금 환불이 불가합니다.\n* 미용비 결제는 예약금 차감 후 결제됩니다.\n\n반려견의 건강상태 또는 미용 트라우마가 있으면 미용 전 미리 말씀 부탁드립니다.`;
+    }
+    
     const savedTemplates = localStorage.getItem('alimtalkTemplates');
     if (savedTemplates) {
         try {
-            alimtalkTemplates = JSON.parse(savedTemplates);
+            // 저장된 템플릿이 있으면 기존 템플릿과 병합
+            const loadedTemplates = JSON.parse(savedTemplates);
+            Object.assign(alimtalkTemplates, loadedTemplates);
         } catch (error) {
             console.error('템플릿 로드 중 오류:', error);
         }
@@ -2049,47 +2044,23 @@ function initAlimtalkTemplates() {
         });
     });
     
-    // 입력 필드 변경 시 미리보기 업데이트를 위한 이벤트 리스너 추가
-    const formInputs = [
-        'guardian-name',
-        'appointment-date',
-        'appointment-start-time',
-        'selected-service'
-    ];
+    // 폼 입력 변경 시 미리보기 업데이트
+    const guardianNameInput = document.getElementById('guardian-name');
+    if (guardianNameInput) {
+        guardianNameInput.addEventListener('input', updateAlimtalkPreviews);
+    }
     
-    formInputs.forEach(inputId => {
-        const input = document.getElementById(inputId);
-        if (input) {
-            input.addEventListener('input', debounce(() => {
-                updateAlimtalkPreviews();
-            }, 300));
-            
-            // select 요소는 change 이벤트 추가
-            if (input.tagName === 'SELECT') {
-                input.addEventListener('change', () => {
-                    updateAlimtalkPreviews();
-                });
-            }
-        }
+    const petNameInputs = document.querySelectorAll('.pet-name');
+    petNameInputs.forEach(input => {
+        input.addEventListener('input', updateAlimtalkPreviews);
     });
     
-    // 서비스 버튼 클릭 시 미리보기 업데이트
-    document.querySelectorAll('.service-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            setTimeout(() => {
-                updateAlimtalkPreviews();
-            }, 100); // 약간의 지연 시간 추가 (active 클래스 적용 후)
-        });
+    const serviceBtn = document.querySelectorAll('.service-btn');
+    serviceBtn.forEach(btn => {
+        btn.addEventListener('click', updateAlimtalkPreviews);
     });
     
-    // 반려동물 정보 입력 시 미리보기 업데이트
-    document.querySelector('#pet-containers').addEventListener('input', debounce((e) => {
-        if (e.target.classList.contains('pet-name')) {
-            updateAlimtalkPreviews();
-        }
-    }, 300));
-    
-    // 미리보기 초기 업데이트
+    // 초기 미리보기 업데이트
     updateAlimtalkPreviews();
 }
 
@@ -2762,62 +2733,96 @@ function prepareDailyChartData(salesData, startDate, endDate, period) {
 
 // 매출 차트 렌더링
 function renderSalesChart(chartData, period) {
-    const canvas = document.getElementById('sales-chart');
-    
-    if (!canvas) {
-        console.error('매출 차트 캔버스를 찾을 수 없습니다.');
-        return;
-    }
-    
-    // 기존 차트가 있으면 제거
-    if (window.salesChart) {
-        window.salesChart.destroy();
-    }
-    
-    // 차트 설정
-    const chartOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            title: {
-                display: true,
-                text: period === 'today' ? '오늘의 시간별 매출' : 
-                      period === 'thisMonth' ? '이번 달 일별 매출' :
-                      period === 'lastMonth' ? '지난 달 일별 매출' :
-                      period === 'threeMonths' ? '최근 3개월 월별 매출' :
-                      period === 'sixMonths' ? '최근 6개월 월별 매출' :
-                      '최근 12개월 월별 매출',
-                font: {
-                    size: 16
-                }
-            },
-            legend: {
-                position: 'top',
-            },
-            tooltip: {
-                callbacks: {
-                    label: function(context) {
-                        return `${context.dataset.label}: ${context.parsed.y.toLocaleString()}원`;
-                    }
-                }
-            }
-        },
-        scales: {
-            y: {
-                beginAtZero: true,
-                ticks: {
-                    callback: function(value) {
-                        return value.toLocaleString() + '원';
-                    }
-                }
-            }
+    try {
+        // 차트 컨테이너와 캔버스 확인
+        const chartContainer = document.querySelector('.chart-container');
+        if (!chartContainer) {
+            console.error('차트 컨테이너를 찾을 수 없습니다.');
+            return;
         }
-    };
-    
-    // 차트 생성
-    window.salesChart = new Chart(canvas, {
-        type: 'bar',
-        data: chartData,
-        options: chartOptions
-    });
+        
+        // 캔버스 확인 및 생성
+        let canvas = document.getElementById('sales-chart');
+        if (!canvas) {
+            canvas = document.createElement('canvas');
+            canvas.id = 'sales-chart';
+            chartContainer.appendChild(canvas);
+        }
+        
+        // 기존 차트 제거 (메모리 누수 방지)
+        if (window.salesChart) {
+            window.salesChart.destroy();
+        }
+        
+        // 차트 설정
+        const chartConfig = {
+            type: 'bar',
+            data: chartData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: `${periodLabels[period] || '기간별'} 매출 현황`,
+                        font: {
+                            size: 16,
+                            weight: 'bold'
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    // 만원 단위로 표시
+                                    const value = context.parsed.y;
+                                    if (value >= 10000) {
+                                        label += Math.round(value / 10000).toLocaleString() + '만원';
+                                    } else {
+                                        label += value.toLocaleString() + '원';
+                                    }
+                                }
+                                return label;
+                            }
+                        }
+                    },
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                // 만원 단위로 표시
+                                if (value >= 10000) {
+                                    return Math.round(value / 10000).toLocaleString() + '만원';
+                                }
+                                return value.toLocaleString() + '원';
+                            }
+                        }
+                    }
+                }
+            }
+        };
+        
+        // 차트 생성
+        const ctx = canvas.getContext('2d');
+        window.salesChart = new Chart(ctx, chartConfig);
+        
+        console.log('매출 차트 렌더링 완료:', period);
+    } catch (error) {
+        console.error('매출 차트 렌더링 중 오류:', error);
+        ToastNotification.show('매출 차트를 생성하는 중 오류가 발생했습니다.', 'error');
+    }
 }
