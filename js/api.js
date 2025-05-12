@@ -363,34 +363,33 @@ const API_CONFIG = {
   }
   
   // 날짜별 예약 조회
-  async function getAppointmentsByDate(date, staffId = null) {
-    const endpoint = staffId && staffId !== 'all' 
-      ? `/api/appointments/date/${date}?staffId=${staffId}`
-      : `/api/appointments/date/${date}`;
-    return apiRequest(endpoint);
+  async function getAppointmentsByDate(date) {
+    return apiRequest(`/api/appointments/date/${date}`);
   }
   
-  // 특정 월의 예약 조회
-  async function getAppointmentsByMonth(year, month, staffId = null) {
-    const endpoint = staffId && staffId !== 'all'
-      ? `/api/appointments/month/${year}/${month}?staffId=${staffId}`
-      : `/api/appointments/month/${year}/${month}`;
-    return apiRequest(endpoint);
+  // 월별 예약 조회
+  async function getAppointmentsByMonth(year, month, staffId = 'all') {
+    const queryParams = new URLSearchParams();
+    if (staffId && staffId !== 'all') {
+      queryParams.append('staffId', staffId);
+    }
+    
+    return apiRequest(`/api/appointments/month/${year}/${month}?${queryParams.toString()}`);
   }
   
-  // 예약 추가/수정
+  // 예약 저장
   async function saveAppointment(appointmentData) {
     return apiRequest('/api/appointments', 'POST', appointmentData);
   }
   
   // 예약 상태 변경
-  async function updateAppointmentStatus(id, status) {
-    return apiRequest(`/api/appointments/${id}/status`, 'PATCH', { status });
+  async function updateAppointmentStatus(appointmentId, status) {
+    return apiRequest(`/api/appointments/${appointmentId}/status`, 'PUT', { status });
   }
   
   // 예약 삭제
-  async function deleteAppointment(id) {
-    return apiRequest(`/api/appointments/${id}`, 'DELETE');
+  async function deleteAppointment(appointmentId) {
+    return apiRequest(`/api/appointments/${appointmentId}`, 'DELETE');
   }
   
   // ====== 매출 관련 API ======
