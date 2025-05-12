@@ -3,13 +3,136 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: https://api.chnprice.com https://*.cloudfront.net https://*.githubusercontent.com;">
-    <title>펫그룸 - 대시보드</title>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://petgroom-api.forzamin12.workers.dev; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com https://unpkg.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: https://api.chnprice.com https://*.cloudfront.net https://*.githubusercontent.com;">
+    <title>딥펫 - 반려동물 미용 예약 관리</title>
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/animations/scale.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
     <link rel="stylesheet" href="css/dashboard.css">
+    
+    <!-- JavaScript 파일 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+    <script src="https://unpkg.com/@popperjs/core@2"></script>
+    <script src="https://unpkg.com/tippy.js@6"></script>
+    <script src="js/api.js" type="module"></script>
+    <script src="js/components.js" type="module"></script>
+    <script src="js/dashboard.js" type="module"></script>
+    
+    <script>
+        // Loading animation
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                document.querySelector('.loader').style.opacity = '0';
+                setTimeout(function() {
+                    document.querySelector('.loader').style.display = 'none';
+                }, 500);
+            }, 1500);
+        });
+        
+        // Display current date in header
+        const displayCurrentDate = () => {
+            const now = new Date();
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            const dateDisplayEl = document.getElementById('current-date-display');
+            if (dateDisplayEl) {
+                dateDisplayEl.textContent = now.toLocaleDateString('ko-KR', options);
+            }
+        };
+        
+        // Initialize DOM functionalities
+        document.addEventListener('DOMContentLoaded', () => {
+            // Display current date
+            displayCurrentDate();
+            
+            // Sidebar toggle functionality
+            const toggleSidebar = document.getElementById('toggle-sidebar');
+            const wrapper = document.querySelector('.wrapper');
+            
+            if(toggleSidebar) {
+                toggleSidebar.addEventListener('click', () => {
+                    wrapper.classList.toggle('sidebar-collapsed');
+                });
+            }
+            
+            // Mobile sidebar toggle
+            const mobileToggle = document.getElementById('mobile-toggle');
+            
+            if(mobileToggle) {
+                mobileToggle.addEventListener('click', () => {
+                    wrapper.classList.toggle('sidebar-mobile-open');
+                });
+            }
+            
+            // Notification dropdown toggle
+            const notificationBtn = document.getElementById('notification-btn');
+            const notificationDropdown = document.querySelector('.notification-dropdown');
+            
+            if(notificationBtn && notificationDropdown) {
+                notificationBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    notificationDropdown.classList.toggle('show');
+                });
+                
+                document.addEventListener('click', (e) => {
+                    if (!notificationBtn.contains(e.target) && !notificationDropdown.contains(e.target)) {
+                        notificationDropdown.classList.remove('show');
+                    }
+                });
+            }
+            
+            // User dropdown toggle
+            const userImage = document.querySelector('.user-image');
+            const userDropdown = document.querySelector('.user-dropdown');
+            
+            if(userImage && userDropdown) {
+                userImage.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    userDropdown.classList.toggle('show');
+                });
+                
+                document.addEventListener('click', (e) => {
+                    if (!userImage.contains(e.target) && !userDropdown.contains(e.target)) {
+                        userDropdown.classList.remove('show');
+                    }
+                });
+            }
+            
+            // Settings tabs functionality
+            const settingsTabs = document.querySelectorAll('.settings-tab');
+            const settingsContents = document.querySelectorAll('.settings-content');
+            
+            if(settingsTabs.length) {
+                settingsTabs.forEach(tab => {
+                    tab.addEventListener('click', () => {
+                        // Remove active class from all tabs
+                        settingsTabs.forEach(t => t.classList.remove('active'));
+                        
+                        // Add active class to clicked tab
+                        tab.classList.add('active');
+                        
+                        // Hide all content
+                        settingsContents.forEach(content => {
+                            content.classList.remove('active');
+                        });
+                        
+                        // Show selected content
+                        const tabId = tab.getAttribute('data-tab');
+                        document.getElementById(`${tabId}-tab-content`).classList.add('active');
+                    });
+                });
+            }
+            
+            // Initialize Tippy.js tooltips
+            if (window.tippy) {
+                tippy('[data-tippy-content]', {
+                    placement: 'right',
+                    animation: 'scale',
+                    theme: 'petgroom'
+                });
+            }
+        });
+    </script>
 </head>
 <body>
     <!-- Loading Animation -->
@@ -989,117 +1112,5 @@
             </div>
         </div>
     </div>
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
-    <script src="https://unpkg.com/@popperjs/core@2"></script>
-    <script src="https://unpkg.com/tippy.js@6"></script>
-    <script type="module" src="js/dashboard.js"></script>
-    <script>
-        // Loading animation
-        window.addEventListener('load', function() {
-            setTimeout(function() {
-                document.querySelector('.loader').style.opacity = '0';
-                setTimeout(function() {
-                    document.querySelector('.loader').style.display = 'none';
-                }, 500);
-            }, 1500);
-        });
-        
-        // Display current date in header
-        const displayCurrentDate = () => {
-            const now = new Date();
-            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-            document.getElementById('current-date-display').textContent = now.toLocaleDateString('ko-KR', options);
-        };
-        displayCurrentDate();
-        
-        // Initialize tooltips
-        document.addEventListener('DOMContentLoaded', () => {
-            // Sidebar toggle functionality
-            const toggleSidebar = document.getElementById('toggle-sidebar');
-            const wrapper = document.querySelector('.wrapper');
-            
-            if(toggleSidebar) {
-                toggleSidebar.addEventListener('click', () => {
-                    wrapper.classList.toggle('sidebar-collapsed');
-                });
-            }
-            
-            // Mobile sidebar toggle
-            const mobileToggle = document.getElementById('mobile-toggle');
-            
-            if(mobileToggle) {
-                mobileToggle.addEventListener('click', () => {
-                    wrapper.classList.toggle('sidebar-mobile-open');
-                });
-            }
-            
-            // Notification dropdown toggle
-            const notificationBtn = document.getElementById('notification-btn');
-            const notificationDropdown = document.querySelector('.notification-dropdown');
-            
-            if(notificationBtn && notificationDropdown) {
-                notificationBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    notificationDropdown.classList.toggle('show');
-                });
-                
-                document.addEventListener('click', (e) => {
-                    if (!notificationBtn.contains(e.target) && !notificationDropdown.contains(e.target)) {
-                        notificationDropdown.classList.remove('show');
-                    }
-                });
-            }
-            
-            // User dropdown toggle
-            const userImage = document.querySelector('.user-image');
-            const userDropdown = document.querySelector('.user-dropdown');
-            
-            if(userImage && userDropdown) {
-                userImage.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    userDropdown.classList.toggle('show');
-                });
-                
-                document.addEventListener('click', (e) => {
-                    if (!userImage.contains(e.target) && !userDropdown.contains(e.target)) {
-                        userDropdown.classList.remove('show');
-                    }
-                });
-            }
-            
-            // Settings tabs functionality
-            const settingsTabs = document.querySelectorAll('.settings-tab');
-            const settingsContents = document.querySelectorAll('.settings-content');
-            
-            if(settingsTabs.length) {
-                settingsTabs.forEach(tab => {
-                    tab.addEventListener('click', () => {
-                        // Remove active class from all tabs
-                        settingsTabs.forEach(t => t.classList.remove('active'));
-                        
-                        // Add active class to clicked tab
-                        tab.classList.add('active');
-                        
-                        // Hide all content
-                        settingsContents.forEach(content => {
-                            content.classList.remove('active');
-                        });
-                        
-                        // Show selected content
-                        const tabId = tab.getAttribute('data-tab');
-                        document.getElementById(`${tabId}-tab-content`).classList.add('active');
-                    });
-                });
-            }
-            
-            // Initialize Tippy.js tooltips
-            tippy('[data-tippy-content]', {
-                placement: 'right',
-                animation: 'scale',
-                theme: 'petgroom'
-            });
-        });
-    </script>
 </body>
 </html>
