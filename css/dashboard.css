@@ -2591,3 +2591,66 @@ header {
     gap: 15px;
     margin-bottom: 15px;
 }
+
+/* 예약 통계 대시보드 */
+.appointment-stats-dashboard {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 20px;
+    background-color: var(--bg-light);
+    border-radius: 8px;
+    padding: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.appointment-stats-dashboard .stat-item {
+    flex: 1;
+    min-width: 120px;
+    background-color: white;
+    border-radius: 6px;
+    padding: 12px;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.appointment-stats-dashboard .stat-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+}
+
+.appointment-stats-dashboard .stat-label {
+    display: block;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-bottom: 5px;
+}
+
+.appointment-stats-dashboard .stat-value {
+    display: block;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+/* 상태별 색상 */
+.appointment-stats-dashboard .stat-item:nth-child(1) {
+    border-top: 3px solid var(--primary);
+}
+
+.appointment-stats-dashboard .stat-item:nth-child(2) {
+    border-top: 3px solid var(--info);
+}
+
+.appointment-stats-dashboard .stat-item:nth-child(3) {
+    border-top: 3px solid var(--warning);
+}
+
+.appointment-stats-dashboard .stat-item:nth-child(4) {
+    border-top: 3px solid var(--success);
+}
+
+.appointment-stats-dashboard .stat-item:nth-child(5) {
+    border-top: 3px solid var(--danger);
+}
