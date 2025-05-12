@@ -2519,192 +2519,165 @@ async function renderSalesData(period) {
 
 // 매출 차트 업데이트
 function updateSalesChart(salesData, period) {
-    const ctx = document.getElementById('sales-chart').getContext('2d');
-    
-    // 기존 차트 제거
-    if (salesChart) {
-        salesChart.destroy();
-    }
-    
-    // 데이터 포맷팅
-    const labels = salesData.map(item => item.date);
-    const values = salesData.map(item => item.amount);
-    
-    // 차트 생성
-    salesChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: '매출',
-                data: values,
-                borderColor: 'rgb(108, 99, 255)',
-                backgroundColor: 'rgba(108, 99, 255, 0.1)',
-                borderWidth: 2,
-                pointRadius: 4,
-                pointHoverRadius: 6,
-                tension: 0.4,
-                fill: true
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'top',
-                    labels: {
-                        font: {
+    try {
+        // 캔버스 요소 찾기
+        const canvas = document.getElementById('sales-chart');
+        if (!canvas) {
+            console.error('매출 차트 캔버스를 찾을 수 없습니다.');
+            return;
+        }
+
+        // 기존 차트 제거
+        if (window.salesChart instanceof Chart) {
+            window.salesChart.destroy();
+        }
+
+        const ctx = canvas.getContext('2d');
+        
+        // 데이터 포맷팅
+        const labels = salesData.map(item => {
+            const date = new Date(item.date);
+            return date.toLocaleDateString('ko-KR');
+        });
+        const values = salesData.map(item => item.amount);
+        
+        // 차트 생성
+        window.salesChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: '매출',
+                    data: values,
+                    borderColor: 'rgb(108, 99, 255)',
+                    backgroundColor: 'rgba(108, 99, 255, 0.1)',
+                    borderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            font: {
+                                size: 14,
+                                weight: 'bold'
+                            },
+                            padding: 20
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        padding: 12,
+                        titleFont: {
                             size: 14,
                             weight: 'bold'
                         },
-                        padding: 20
+                        bodyFont: {
+                            size: 13
+                        },
+                        callbacks: {
+                            label: function(context) {
+                                return `매출: ${context.parsed.y.toLocaleString()}원`;
+                            }
+                        }
                     }
                 },
-                tooltip: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    padding: 12,
-                    titleFont: {
-                        size: 14,
-                        weight: 'bold'
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return (value / 10000).toLocaleString() + '만원';
+                            },
+                            font: {
+                                size: 12,
+                                weight: 'bold'
+                            },
+                            padding: 10
+                        },
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.1)',
+                            drawBorder: false
+                        }
                     },
-                    bodyFont: {
-                        size: 13
-                    },
-                    callbacks: {
-                        label: function(context) {
-                            return `매출: ${context.parsed.y.toLocaleString()}원`;
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            font: {
+                                size: 12
+                            },
+                            padding: 10
                         }
                     }
                 }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        callback: function(value) {
-                            return (value / 10000).toLocaleString() + '만원';
-                        },
-                        font: {
-                            size: 12,
-                            weight: 'bold'
-                        },
-                        padding: 10
-                    },
-                    grid: {
-                        color: 'rgba(0, 0, 0, 0.1)',
-                        drawBorder: false
-                    }
-                },
-                x: {
-                    grid: {
-                        display: false
-                    },
-                    ticks: {
-                        font: {
-                            size: 12
-                        },
-                        padding: 10
-                    }
-                }
-            },
-            interaction: {
-                intersect: false,
-                mode: 'index'
-            },
-            animation: {
-                duration: 1000,
-                easing: 'easeInOutQuart'
             }
-        }
-    });
+        });
+    } catch (error) {
+        console.error('차트 업데이트 오류:', error);
+        ToastNotification.show('차트를 표시하는 중 오류가 발생했습니다.', 'error');
+    }
 }
 
 // 계정 목록 조회 및 렌더링
 async function renderAccountsTable() {
     try {
-        LoadingIndicator.show('계정 정보를 불러오는 중...');
-        
-        // 직원 목록 API 호출
-        const staffResponse = await API.getStaff();
-        staffMembers = staffResponse.staffMembers || [];
-        
+        const accounts = await API.getUsers();
         const tbody = document.querySelector('#accounts-table tbody');
         tbody.innerHTML = '';
-        
-        if (staffMembers.length === 0) {
+
+        // admin 계정을 제외하고 표시
+        const filteredAccounts = accounts.filter(account => account.role !== 'admin');
+
+        filteredAccounts.forEach(account => {
             const tr = document.createElement('tr');
-            tr.innerHTML = '<td colspan="6" class="text-center">등록된 계정이 없습니다.</td>';
+            tr.innerHTML = `
+                <td>${account.role === 'staff' ? '직원' : '관리자'}</td>
+                <td>${account.email}</td>
+                <td>${account.name}</td>
+                <td>${account.phone || '-'}</td>
+                <td>${account.memo || '-'}</td>
+                <td>
+                    <button class="btn btn-sm btn-secondary edit-account" data-id="${account.id}">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger delete-account" data-id="${account.id}">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            `;
             tbody.appendChild(tr);
-        } else {
-            staffMembers.forEach(user => {
-                const tr = document.createElement('tr');
-                
-                tr.innerHTML = `
-                    <td>${user.role === 'admin' ? '관리자' : '직원'}</td>
-                    <td>${user.email}</td>
-                    <td>${user.name}</td>
-                    <td>${user.phone || '-'}</td>
-                    <td>${user.memo || '-'}</td>
-                    <td>
-                        ${(user.role !== 'admin' || currentUser.role === 'admin') ? `
-                            <button class="btn btn-sm btn-secondary edit-account" data-id="${user.id}" aria-label="수정">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            ${user.email !== 'admin' ? `
-                                <button class="btn btn-sm btn-danger delete-account" data-id="${user.id}" aria-label="삭제">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            ` : ''}
-                        ` : '-'}
-                    </td>
-                `;
-                
-                tbody.appendChild(tr);
-            });
-        }
-        
-        // 계정 수정/삭제 버튼 이벤트 추가
-        document.querySelectorAll('.edit-account').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const userId = btn.dataset.id;
-                openAccountModal(userId);
-            });
         });
-        
+
+        // 이벤트 리스너 추가
+        document.querySelectorAll('.edit-account').forEach(btn => {
+            btn.addEventListener('click', () => openAccountModal(btn.dataset.id));
+        });
+
         document.querySelectorAll('.delete-account').forEach(btn => {
             btn.addEventListener('click', async () => {
-                const userId = btn.dataset.id;
-                const user = staffMembers.find(u => u.id === userId);
-                
-                const confirmed = await ConfirmDialog.show({
-                    title: '계정 삭제',
-                    message: `"${user?.name || '이 계정'}" 계정을 삭제하시겠습니까?`,
-                    confirmText: '삭제',
-                    cancelText: '취소',
-                    type: 'danger'
-                });
-                
-                if (confirmed) {
+                if (confirm('정말로 이 계정을 삭제하시겠습니까?')) {
                     try {
-                        LoadingIndicator.show('계정을 삭제하는 중...');
-                        await API.deleteUser(userId);
-                        await renderAccountsTable(); // 테이블 다시 로드
+                        await API.deleteUser(btn.dataset.id);
                         ToastNotification.show('계정이 삭제되었습니다.', 'success');
-                        LoadingIndicator.hide();
+                        renderAccountsTable();
                     } catch (error) {
-                        LoadingIndicator.hide();
-                        ToastNotification.show(`계정 삭제 중 오류가 발생했습니다: ${error.message}`, 'error');
+                        ToastNotification.show('계정 삭제 중 오류가 발생했습니다.', 'error');
                     }
                 }
             });
         });
-        
-        LoadingIndicator.hide();
     } catch (error) {
-        LoadingIndicator.hide();
-        console.error('계정 목록 로드 중 오류:', error);
-        ToastNotification.show(`계정 정보를 불러오는 중 오류가 발생했습니다: ${error.message}`, 'error');
+        console.error('계정 목록 로딩 중 오류:', error);
+        ToastNotification.show('계정 목록을 불러오는 중 오류가 발생했습니다.', 'error');
     }
 }
 
