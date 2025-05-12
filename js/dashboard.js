@@ -1520,8 +1520,14 @@ async function openAppointmentModal(time = null, staffId = null, date = null) {
             searchResultsContainer.id = 'customer-search-results';
             searchResultsContainer.className = 'search-results-container';
             searchResultsContainer.style.display = 'none';
+            searchResultsContainer.style.position = 'absolute';
+            searchResultsContainer.style.zIndex = '9999';
+            searchResultsContainer.style.width = '100%';
+            searchResultsContainer.style.top = '100%';
+            searchResultsContainer.style.left = '0';
             
             // 검색 결과 컨테이너를 보호자 이름 입력 필드 아래에 배치
+            guardianNameInput.parentNode.style.position = 'relative';
             guardianNameInput.parentNode.appendChild(searchResultsContainer);
         }
         
@@ -2462,9 +2468,53 @@ async function renderSalesData() {
     const totalAmount = salesData.reduce((sum, item) => sum + (item.total_amount || 0), 0);
     const totalCount = salesData.reduce((sum, item) => sum + (item.count || 0), 0);
     
+    // 통계 카드 컨테이너 확인 및 생성
+    let statsContainer = document.querySelector('.sales-stats');
+    if (!statsContainer) {
+      // 통계 카드 컨테이너가 없으면 생성
+      statsContainer = document.createElement('div');
+      statsContainer.className = 'sales-stats';
+      const salesPage = document.getElementById('sales-page');
+      
+      // 차트 컨테이너 찾기
+      const chartContainer = salesPage.querySelector('.sales-chart');
+      if (chartContainer) {
+        // 차트 컨테이너 다음에 추가
+        chartContainer.insertAdjacentElement('afterend', statsContainer);
+      } else {
+        // 차트 컨테이너가 없으면 페이지에 추가
+        salesPage.appendChild(statsContainer);
+      }
+      
+      // 통계 카드 생성
+      const totalSalesCard = document.createElement('div');
+      totalSalesCard.className = 'stat-card';
+      totalSalesCard.innerHTML = `
+        <div class="stat-title">총 매출액</div>
+        <div class="stat-value" id="total-sales">0원</div>
+      `;
+      
+      const totalCountCard = document.createElement('div');
+      totalCountCard.className = 'stat-card';
+      totalCountCard.innerHTML = `
+        <div class="stat-title">총 건수</div>
+        <div class="stat-value" id="total-count">0건</div>
+      `;
+      
+      statsContainer.appendChild(totalSalesCard);
+      statsContainer.appendChild(totalCountCard);
+    }
+    
     // 통계 카드 업데이트
-    document.getElementById('total-sales').textContent = totalAmount.toLocaleString() + '원';
-    document.getElementById('total-count').textContent = totalCount.toLocaleString() + '건';
+    const totalSalesElement = document.getElementById('total-sales');
+    if (totalSalesElement) {
+      totalSalesElement.textContent = totalAmount.toLocaleString() + '원';
+    }
+    
+    const totalCountElement = document.getElementById('total-count');
+    if (totalCountElement) {
+      totalCountElement.textContent = totalCount.toLocaleString() + '건';
+    }
     
   } catch (error) {
     console.error('매출 데이터 렌더링 중 오류:', error);
