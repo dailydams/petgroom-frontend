@@ -390,19 +390,19 @@ function initAppointmentEvents() {
                     duration = 30;
                     break;
                 case '부분+목욕':
-                    duration = 45;
+                    duration = 60;
                     break;
                 case '부분+목욕+얼컷':
                     duration = 60;
                     break;
                 case '전체미용':
-                    duration = 90;
-                    break;
-                case '스포팅':
                     duration = 120;
                     break;
+                case '스포팅':
+                    duration = 180;
+                    break;
                 case '전체가위컷':
-                    duration = 150;
+                    duration = 180;
                     break;
                 default:
                     duration = 30;
@@ -437,6 +437,53 @@ function initAppointmentEvents() {
 
         durationSelect.addEventListener('change', () => {
             updateEndTime(parseInt(durationSelect.value));
+        });
+    }
+    
+    // 알림톡 옵션 변경 이벤트
+    const alimtalkOptions = document.querySelectorAll('input[name="alimtalk-option"]');
+    alimtalkOptions.forEach(option => {
+        option.addEventListener('change', function() {
+            // 모든 미리보기 숨기기
+            document.querySelectorAll('.alimtalk-preview').forEach(preview => {
+                preview.style.display = 'none';
+            });
+            
+            // 선택된 옵션의 미리보기만 표시
+            if (this.value !== 'none') {
+                const previewEl = document.getElementById(`alimtalk-${this.value}-preview`);
+                if (previewEl) {
+                    previewEl.style.display = 'block';
+                }
+            }
+        });
+    });
+    
+    // 알림톡 수정 버튼 이벤트
+    const editAlimtalkBtn = document.getElementById('edit-alimtalk-btn');
+    if (editAlimtalkBtn) {
+        editAlimtalkBtn.addEventListener('click', openAlimtalkEditModal);
+    }
+    
+    // 신규 예약 버튼
+    const newAppointmentBtn = document.getElementById('new-appointment-btn');
+    if (newAppointmentBtn) {
+        newAppointmentBtn.addEventListener('click', () => {
+            openAppointmentModal(null, null, currentDate);
+        });
+    }
+    
+    // 반려동물 추가 버튼
+    const addPetBtn = document.getElementById('add-pet-btn');
+    if (addPetBtn) {
+        addPetBtn.addEventListener('click', addPetForm);
+    }
+    
+    // 예약 취소 버튼
+    const cancelAppointmentBtn = document.getElementById('cancel-appointment-btn');
+    if (cancelAppointmentBtn) {
+        cancelAppointmentBtn.addEventListener('click', () => {
+            document.getElementById('appointment-modal').style.display = 'none';
         });
     }
 }
@@ -624,8 +671,7 @@ function updateCalendarHeader() {
             options = { year: 'numeric', month: 'long' };
             document.getElementById('current-date').textContent = currentDate.toLocaleDateString('ko-KR', options);
         }
-        
-        // 예약 폼의 기본 날짜를 현재 선택된 날짜로 설정
+                // 예약 폼의 기본 날짜를 현재 선택된 날짜로 설정
         const dateInput = document.getElementById('appointment-date');
         dateInput.value = formatDate(currentDate);
     } catch (error) {
@@ -1339,7 +1385,7 @@ async function loadMonthView() {
             dayElement.appendChild(dayHeader);
             dayElement.appendChild(dayContent);
             
-            // 날짜 클릭 시 해당 날짜의 일간 뷰로 이동
+            // 날짜 클릭 시 해당 날짜의 예약 모달 바로 표시
             dayElement.addEventListener('click', () => {
                 // 날짜 클릭 시 해당 날짜의 예약 모달 바로 표시
                 openAppointmentModal(null, null, dayDate);
@@ -1851,947 +1897,19 @@ function addPetForm() {
     petContainers.appendChild(newPetContainer);
 }
 
-// 고객 모달 열기
-async function openCustomerModal(customerId = null, mode = 'add') {
-    try {
-        LoadingIndicator.show('데이터를 불러오는 중...');
-        
-        const modal = document.getElementById('customer-modal');
-        const form = document.getElementById('customer-form');
-        form.reset();
-        
-        // 모달 제목 설정
-        const modalTitle = document.getElementById('customer-modal-title');
-        if (mode === 'view') {
-            modalTitle.textContent = '고객 정보 조회';
-        } else if (mode === 'edit') {
-            modalTitle.textContent = '고객 정보 수정';
-        } else {
-            modalTitle.textContent = '신규 고객 등록';
-        }
-        
-        // 펫 컨테이너 초기화 (하나만 표시)
-        document.getElementById('customer-pet-containers').innerHTML = `
-            <div class="pet-container">
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label for="customer-pet-name-1">반려동물명</label>
-                        <input type="text" id="customer-pet-name-1" class="form-control customer-pet-name" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="customer-pet-breed-1">품종</label>
-                        <input type="text" id="customer-pet-breed-1" class="form-control customer-pet-breed" required>
-                    </div>
-                </div>
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label for="customer-pet-weight-1">몸무게(kg)</label>
-                        <input type="number" id="customer-pet-weight-1" class="form-control customer-pet-weight" step="0.1" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="customer-pet-age-1">나이</label>
-                        <input type="number" id="customer-pet-age-1" class="form-control customer-pet-age">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label for="customer-pet-memo-1">반려동물 메모</label>
-                    <textarea id="customer-pet-memo-1" class="form-control customer-pet-memo"></textarea>
-                </div>
-            </div>
-        `;
-        
-        // 기존 고객 정보 불러오기
-        if (customerId) {
-            try {
-                const response = await API.getCustomer(customerId);
-                const customer = response.customer;
-                
-                if (customer) {
-                    document.getElementById('customer-name').value = customer.name;
-                    document.getElementById('customer-phone').value = customer.phone;
-                    document.getElementById('customer-memo').value = customer.memo || '';
-                    document.getElementById('customer-alimtalk-consent').checked = !!customer.alimtalk_consent;
-                    
-                    // 반려동물 정보 채우기
-                    if (customer.pets && customer.pets.length > 0) {
-                        document.getElementById('customer-pet-containers').innerHTML = '';
-                        
-                        customer.pets.forEach((pet, index) => {
-                            const petContainer = document.createElement('div');
-                            petContainer.className = 'pet-container';
-                            
-                            petContainer.innerHTML = `
-                                <div class="form-grid">
-                                    <div class="form-group">
-                                        <label for="customer-pet-name-${index+1}">반려동물명</label>
-                                        <input type="text" id="customer-pet-name-${index+1}" class="form-control customer-pet-name" value="${pet.name}" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="customer-pet-breed-${index+1}">품종</label>
-                                        <input type="text" id="customer-pet-breed-${index+1}" class="form-control customer-pet-breed" value="${pet.breed}" required>
-                                    </div>
-                                </div>
-                                <div class="form-grid">
-                                    <div class="form-group">
-                                        <label for="customer-pet-weight-${index+1}">몸무게(kg)</label>
-                                        <input type="number" id="customer-pet-weight-${index+1}" class="form-control customer-pet-weight" value="${pet.weight || ''}" step="0.1" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="customer-pet-age-${index+1}">나이</label>
-                                        <input type="number" id="customer-pet-age-${index+1}" class="form-control customer-pet-age" value="${pet.age || ''}">
-                                    </div>
-                                </div>
-                                <div class="form-group">
-                                    <label for="customer-pet-memo-${index+1}">반려동물 메모</label>
-                                    <textarea id="customer-pet-memo-${index+1}" class="form-control customer-pet-memo">${pet.memo || ''}</textarea>
-                                </div>
-                                <input type="hidden" class="customer-pet-id" value="${pet.id || ''}">
-                            `;
-                            
-                            document.getElementById('customer-pet-containers').appendChild(petContainer);
-                        });
-                    }
-                    
-                    // 조회 모드인 경우 폼 비활성화
-                    if (mode === 'view') {
-                        const inputs = form.querySelectorAll('input, textarea, button');
-                        inputs.forEach(input => {
-                            input.disabled = true;
-                        });
-                        
-                        // 취소 버튼만 활성화
-                        document.getElementById('cancel-customer-btn').disabled = false;
-                    }
-                }
-            } catch (error) {
-                console.error('고객 정보 로드 중 오류:', error);
-                ToastNotification.show(`고객 정보를 불러오는 중 오류가 발생했습니다: ${error.message}`, 'error');
+// 알림톡 미리보기 업데이트
+function updateAlimtalkPreviews() {
+    for (const type in alimtalkTemplates) {
+        const previewEl = document.getElementById(`alimtalk-${type}-preview`);
+        if (previewEl) {
+            const contentContainer = previewEl.querySelector('.alimtalk-content');
+            if (contentContainer) {
+                // HTML로 변환하여 표시 (줄바꿈 유지)
+                contentContainer.innerHTML = alimtalkTemplates[type]
+                    .replace(/\n/g, '</p><p>')
+                    .replace(/^<\/p>/, '')
+                    .replace(/<p>$/, '');
             }
         }
-        
-        // 숨겨진 고객 ID 필드 추가 (수정 모드용)
-        let hiddenIdField = document.getElementById('customer-id');
-        if (!hiddenIdField) {
-            hiddenIdField = document.createElement('input');
-            hiddenIdField.type = 'hidden';
-            hiddenIdField.id = 'customer-id';
-            form.appendChild(hiddenIdField);
-        }
-        hiddenIdField.value = customerId || '';
-        
-        // 모드 필드 추가
-        let hiddenModeField = document.getElementById('customer-mode');
-        if (!hiddenModeField) {
-            hiddenModeField = document.createElement('input');
-            hiddenModeField.type = 'hidden';
-            hiddenModeField.id = 'customer-mode';
-            form.appendChild(hiddenModeField);
-        }
-        hiddenModeField.value = mode;
-        
-        LoadingIndicator.hide();
-        modal.style.display = 'block';
-    } catch (error) {
-        LoadingIndicator.hide();
-        console.error('고객 모달 열기 중 오류:', error);
-        ToastNotification.show('고객 정보 창을 여는 중 오류가 발생했습니다.', 'error');
     }
 }
-
-// 반려동물 폼 추가 (고객 모달용)
-function addCustomerPetForm() {
-    const petContainers = document.getElementById('customer-pet-containers');
-    const petCount = petContainers.childElementCount + 1;
-    
-    const newPetContainer = document.createElement('div');
-    newPetContainer.className = 'pet-container';
-    newPetContainer.innerHTML = `
-        <div class="form-grid">
-            <div class="form-group">
-                <label for="customer-pet-name-${petCount}">반려동물명</label>
-                <input type="text" id="customer-pet-name-${petCount}" class="form-control customer-pet-name" required>
-            </div>
-            <div class="form-group">
-                <label for="customer-pet-breed-${petCount}">품종</label>
-                <input type="text" id="customer-pet-breed-${petCount}" class="form-control customer-pet-breed" required>
-            </div>
-        </div>
-        <div class="form-grid">
-            <div class="form-group">
-                <label for="customer-pet-weight-${petCount}">몸무게(kg)</label>
-                <input type="number" id="customer-pet-weight-${petCount}" class="form-control customer-pet-weight" step="0.1" required>
-            </div>
-            <div class="form-group">
-                <label for="customer-pet-age-${petCount}">나이</label>
-                <input type="number" id="customer-pet-age-${petCount}" class="form-control customer-pet-age">
-            </div>
-        </div>
-        <div class="form-group">
-            <label for="customer-pet-memo-${petCount}">반려동물 메모</label>
-            <textarea id="customer-pet-memo-${petCount}" class="form-control customer-pet-memo"></textarea>
-        </div>
-    `;
-    
-    petContainers.appendChild(newPetContainer);
-}
-
-// 고객 정보 저장 (폼에서)
-async function saveCustomerFromForm() {
-    try {
-        LoadingIndicator.show('고객 정보 저장 중...');
-        
-        const customerId = document.getElementById('customer-id').value;
-        const mode = document.getElementById('customer-mode').value;
-        
-        // 조회 모드인 경우 저장하지 않음
-        if (mode === 'view') {
-            document.getElementById('customer-modal').style.display = 'none';
-            LoadingIndicator.hide();
-            return;
-        }
-        
-        // 폼 데이터 수집
-        const name = document.getElementById('customer-name').value;
-        const phone = document.getElementById('customer-phone').value;
-        const memo = document.getElementById('customer-memo').value;
-        const alimtalkConsent = document.getElementById('customer-alimtalk-consent').checked;
-        
-        // 반려동물 정보 수집
-        const petContainers = document.querySelectorAll('#customer-pet-containers .pet-container');
-        const pets = Array.from(petContainers).map(container => {
-            const petId = container.querySelector('.customer-pet-id')?.value || null;
-            
-            return {
-                id: petId,
-                name: container.querySelector('.customer-pet-name').value,
-                breed: container.querySelector('.customer-pet-breed').value,
-                weight: parseFloat(container.querySelector('.customer-pet-weight').value),
-                age: container.querySelector('.customer-pet-age').value || null,
-                memo: container.querySelector('.customer-pet-memo').value || ''
-            };
-        });
-        
-        // API 데이터 객체
-        const customerData = {
-            id: customerId,
-            name,
-            phone,
-            memo,
-            pets,
-            alimtalkConsent
-        };
-        
-        // API 호출
-        await API.saveCustomer(customerData);
-        
-        // 고객 목록 다시 로드
-        const response = await API.getCustomers();
-        customers = response.customers || [];
-        
-        // 모달 닫기
-        document.getElementById('customer-modal').style.display = 'none';
-        
-        // 고객 목록 다시 렌더링 (현재 고객 관리 페이지가 활성화 상태인 경우)
-        const customersPage = document.getElementById('customers-page');
-        if (customersPage.classList.contains('active')) {
-            await renderCustomersTable();
-        }
-        
-        // 성공 메시지
-        ToastNotification.show(
-            customerId ? '고객 정보가 업데이트되었습니다.' : '새 고객이 추가되었습니다.',
-            'success'
-        );
-        
-        LoadingIndicator.hide();
-    } catch (error) {
-        LoadingIndicator.hide();
-        console.error('고객 정보 저장 중 오류:', error);
-        ToastNotification.show(`고객 정보 저장에 실패했습니다: ${error.message}`, 'error');
-    }
-}
-
-// 고객 검색
-async function searchCustomers(searchTerm) {
-    try {
-        if (!searchTerm) {
-            await renderCustomersTable();
-            return;
-        }
-        
-        LoadingIndicator.show('고객 검색 중...');
-        
-        const response = await API.getCustomers(1, 50, searchTerm);
-        const filteredCustomers = response.customers || [];
-        
-        // 테이블 업데이트
-        await renderCustomersTableWithData(filteredCustomers, response.pagination);
-        
-        LoadingIndicator.hide();
-    } catch (error) {
-        LoadingIndicator.hide();
-        console.error('고객 검색 중 오류:', error);
-        ToastNotification.show(`고객 검색 중 오류가 발생했습니다: ${error.message}`, 'error');
-    }
-}
-
-// 고객 목록 테이블 렌더링
-async function renderCustomersTable(page = 1, limit = 20) {
-    try {
-        LoadingIndicator.show('고객 정보를 불러오는 중...');
-        
-        const response = await API.getCustomers(page, limit);
-        customers = response.customers || [];
-        
-        await renderCustomersTableWithData(customers, response.pagination);
-        
-        LoadingIndicator.hide();
-    } catch (error) {
-        LoadingIndicator.hide();
-        console.error('고객 목록 로드 중 오류:', error);
-        ToastNotification.show(`고객 정보를 불러오는 중 오류가 발생했습니다: ${error.message}`, 'error');
-    }
-}
-
-// 고객 테이블 데이터 렌더링 헬퍼 함수
-async function renderCustomersTableWithData(customerData, pagination) {
-    const tbody = document.querySelector('#customers-table tbody');
-    tbody.innerHTML = '';
-    
-    if (customerData.length === 0) {
-        const tr = document.createElement('tr');
-        tr.innerHTML = '<td colspan="6" class="text-center">조회된 고객이 없습니다.</td>';
-        tbody.appendChild(tr);
-        return;
-    }
-    
-    customerData.forEach(customer => {
-        const tr = document.createElement('tr');
-        
-        // 최근 방문일
-        let lastVisit = '없음';
-        if (customer.last_visit) {
-            const visitDate = new Date(customer.last_visit);
-            lastVisit = visitDate.toLocaleDateString('ko-KR');
-        }
-        
-        tr.innerHTML = `
-            <td>${customer.name}</td>
-            <td>${customer.phone}</td>
-            <td>${(customer.pets || []).map(p => p.name).join(', ')}</td>
-            <td>${lastVisit}</td>
-            <td>${customer.visits || 0}</td>
-            <td>
-                <button class="btn btn-sm btn-primary view-customer" data-id="${customer.id}" aria-label="보기">
-                    <i class="fas fa-eye"></i>
-                </button>
-                <button class="btn btn-sm btn-secondary edit-customer" data-id="${customer.id}" aria-label="수정">
-                    <i class="fas fa-edit"></i>
-                </button>
-            </td>
-        `;
-        
-        tbody.appendChild(tr);
-    });
-    
-    // 버튼 이벤트 추가
-    document.querySelectorAll('.view-customer').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const customerId = btn.dataset.id;
-            openCustomerModal(customerId, 'view');
-        });
-    });
-    
-    document.querySelectorAll('.edit-customer').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const customerId = btn.dataset.id;
-            openCustomerModal(customerId, 'edit');
-        });
-    });
-    
-    // 페이지네이션 추가
-    if (pagination) {
-        const paginationContainer = document.createElement('div');
-        paginationContainer.className = 'pagination-container';
-        
-        document.querySelector('.customers-table-container').appendChild(paginationContainer);
-        
-        Pagination.render(paginationContainer, {
-            currentPage: pagination.page,
-            totalPages: pagination.totalPages,
-            onPageChange: (page) => {
-                renderCustomersTable(page, pagination.limit);
-            }
-        });
-    }
-}
-
-// 계정 모달 열기
-async function openAccountModal(userId = null) {
-    try {
-        LoadingIndicator.show('계정 정보 불러오는 중...');
-        
-        const modal = document.getElementById('account-modal');
-        const form = document.getElementById('account-form');
-        form.reset();
-        
-        // 모달 제목 설정
-        document.getElementById('account-modal-title').textContent = userId ? '계정 수정' : '계정 추가';
-        
-        // 기존 계정 정보 불러오기
-        if (userId) {
-            try {
-                // 사용자 목록에서 해당 사용자 찾기
-                const user = staffMembers.find(u => u.id === userId);
-                
-                if (user) {
-                    document.getElementById('account-id').value = user.id || '';
-                    document.getElementById('account-email').value = user.email;
-                    document.getElementById('account-name').value = user.name;
-                    document.getElementById('account-phone').value = user.phone || '';
-                    document.getElementById('account-memo').value = user.memo || '';
-                    
-                    // 권한 설정
-                    if (user.role === 'admin') {
-                        document.getElementById('role-admin').checked = true;
-                    } else {
-                        document.getElementById('role-staff').checked = true;
-                    }
-                    
-                    // 수정 시에는 비밀번호 필드를 선택사항으로 변경
-                    document.getElementById('account-password').required = false;
-                    document.getElementById('password-group').querySelector('label').textContent = '비밀번호 (변경시에만 입력)';
-                }
-            } catch (error) {
-                console.error('계정 정보 로드 중 오류:', error);
-                ToastNotification.show(`계정 정보를 불러오는 중 오류가 발생했습니다: ${error.message}`, 'error');
-            }
-        } else {
-            // 신규 계정인 경우 비밀번호 필수
-            document.getElementById('account-password').required = true;
-            document.getElementById('password-group').querySelector('label').textContent = '비밀번호';
-            document.getElementById('account-id').value = '';
-        }
-        
-        LoadingIndicator.hide();
-        modal.style.display = 'block';
-    } catch (error) {
-        LoadingIndicator.hide();
-        console.error('계정 모달 열기 중 오류:', error);
-        ToastNotification.show('계정 정보 창을 여는 중 오류가 발생했습니다.', 'error');
-    }
-}
-
-// 계정 정보 저장 (폼에서)
-async function saveAccountFromForm() {
-    try {
-        LoadingIndicator.show('계정 정보 저장 중...');
-        
-        // 폼 데이터 수집
-        const id = document.getElementById('account-id').value;
-        const email = document.getElementById('account-email').value;
-        const password = document.getElementById('account-password').value;
-        const name = document.getElementById('account-name').value;
-        const phone = document.getElementById('account-phone').value;
-        const memo = document.getElementById('account-memo').value;
-        const role = document.querySelector('input[name="role"]:checked').value;
-        
-        // API 데이터 객체
-        const userData = {
-            id,
-            email,
-            password,
-            name,
-            phone,
-            memo,
-            role
-        };
-        
-        // API 호출
-        await API.saveUser(userData);
-        
-        // 직원 목록 다시 로드
-        const staffResponse = await API.getStaff();
-        staffMembers = staffResponse.staffMembers || [];
-        
-        // 모달 닫기
-        document.getElementById('account-modal').style.display = 'none';
-        
-        // 계정 목록 다시 렌더링 (현재 설정 페이지가 활성화 상태인 경우)
-        const settingsPage = document.getElementById('settings-page');
-        if (settingsPage.classList.contains('active')) {
-            await renderAccountsTable();
-        }
-        
-        // 성공 메시지
-        ToastNotification.show(
-            id ? '계정 정보가 업데이트되었습니다.' : '새 계정이 추가되었습니다.',
-            'success'
-        );
-        
-        LoadingIndicator.hide();
-    } catch (error) {
-        LoadingIndicator.hide();
-        console.error('계정 정보 저장 중 오류:', error);
-        ToastNotification.show(`계정 정보 저장에 실패했습니다: ${error.message}`, 'error');
-    }
-}
-
-// 매출 등록 모달 열기
-async function openSaleModal(appointment = null) {
-    try {
-        // 고객 목록이 비어있는 경우 다시 로드
-        if (!customers || customers.length === 0) {
-            LoadingIndicator.show('고객 정보를 불러오는 중...');
-            const customersResponse = await API.getCustomers(1, 100);
-            customers = customersResponse.customers || [];
-            LoadingIndicator.hide();
-        }
-        
-        const modal = document.getElementById('sale-modal');
-        const form = document.getElementById('sale-form');
-        form.reset();
-        
-        if (appointment) {
-            // 예약 ID 설정
-            document.getElementById('appointment-id').value = appointment.id;
-            
-            // 고객 정보 설정
-            document.getElementById('sale-customer-name').value = appointment.guardian.name;
-            document.getElementById('sale-pet-name').value = appointment.pets.map(p => p.name).join(', ');
-            document.getElementById('sale-service').value = appointment.service;
-            
-            // 기본 금액 설정 (서비스별 금액 예시)
-            let defaultAmount = 0;
-            switch (appointment.service) {
-                case '목욕':
-                    defaultAmount = 30000;
-                    break;
-                case '부분+목욕':
-                    defaultAmount = 40000;
-                    break;
-                case '부분+목욕+얼컷':
-                    defaultAmount = 50000;
-                    break;
-                case '전체미용':
-                    defaultAmount = 55000;
-                    break;
-                case '스포팅':
-                    defaultAmount = 65000;
-                    break;
-                case '전체가위컷':
-                    defaultAmount = 70000;
-                    break;
-                default:
-                    defaultAmount = 0;
-            }
-            
-            document.getElementById('sale-amount').value = defaultAmount;
-        }
-        
-        modal.style.display = 'block';
-    } catch (error) {
-        console.error('매출 모달 열기 중 오류:', error);
-        ToastNotification.show('매출 정보 창을 여는 중 오류가 발생했습니다.', 'error');
-    }
-}
-
-// 대시보드 통계 업데이트
-async function updateAppointmentStats() {
-    try {
-        const today = formatDate(new Date());
-        const dateStr = formatDate(currentDate);
-        
-        // 오늘 예약 개수
-        const todayAppointmentsResponse = await API.getAppointmentsByDate(today);
-        const todayAppointments = todayAppointmentsResponse.appointments || [];
-        document.getElementById('today-appointments').textContent = `${todayAppointments.length}건`;
-        
-        // 오늘의 다음 예약 계산
-        const now = new Date();
-        const currentHour = now.getHours();
-        const currentMinute = now.getMinutes();
-        const currentTime = `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`;
-        
-        const upcomingAppointments = todayAppointments
-            .filter(app => app.status === 'reserved' && app.startTime > currentTime)
-            .sort((a, b) => a.startTime.localeCompare(b.startTime));
-        
-        if (upcomingAppointments.length > 0) {
-            const next = upcomingAppointments[0];
-            const [nextHour, nextMinute] = next.startTime.split(':').map(Number);
-            const nextDate = new Date();
-            nextDate.setHours(nextHour, nextMinute);
-            
-            // 대기 시간 계산
-            let diffMinutes = Math.floor((nextDate - now) / (1000 * 60));
-            const diffHours = Math.floor(diffMinutes / 60);
-            diffMinutes = diffMinutes % 60;
-            
-            let waitTime = '';
-            if (diffHours > 0) {
-                waitTime = `${diffHours}시간 ${diffMinutes}분 후`;
-            } else {
-                waitTime = `${diffMinutes}분 후`;
-            }
-            
-            document.getElementById('next-appointment').textContent = `${waitTime} (${next.guardian.name}님)`;
-        } else {
-            document.getElementById('next-appointment').textContent = '없음';
-        }
-        
-        // 완료된 예약
-        const completedToday = todayAppointments.filter(app => app.status === 'completed').length;
-        document.getElementById('completed-appointments').textContent = `${completedToday}건 / ${todayAppointments.length}건`;
-        
-        // 취소된 예약
-        const canceledToday = todayAppointments.filter(app => app.status === 'canceled' || app.status === 'no_show').length;
-        document.getElementById('canceled-appointments').textContent = `${canceledToday}건`;
-    } catch (error) {
-        console.error('예약 통계 업데이트 중 오류:', error);
-        // 대시보드의 작은 오류는 조용히 로깅하고 사용자에게 알리지 않음
-    }
-}
-
-// 매출 데이터 가져오기 및 렌더링
-async function renderSalesData() {
-  try {
-    const response = await API.getSalesStats();
-    const salesData = response.stats || [];
-    
-    // 매출 차트 업데이트
-    updateSalesChart(salesData);
-    
-    // 매출 통계 업데이트
-    const totalAmount = salesData.reduce((sum, item) => sum + (item.total_amount || 0), 0);
-    const totalCount = salesData.reduce((sum, item) => sum + (item.count || 0), 0);
-    
-    // 통계 카드 컨테이너 확인 및 생성
-    let statsContainer = document.querySelector('.sales-stats');
-    if (!statsContainer) {
-      // 통계 카드 컨테이너가 없으면 생성
-      statsContainer = document.createElement('div');
-      statsContainer.className = 'sales-stats';
-      const salesPage = document.getElementById('sales-page');
-      
-      // 차트 컨테이너 찾기
-      const chartContainer = salesPage.querySelector('.sales-chart');
-      if (chartContainer) {
-        // 차트 컨테이너 다음에 추가
-        chartContainer.insertAdjacentElement('afterend', statsContainer);
-      } else {
-        // 차트 컨테이너가 없으면 페이지에 추가
-        salesPage.appendChild(statsContainer);
-      }
-      
-      // 통계 카드 생성
-      const totalSalesCard = document.createElement('div');
-      totalSalesCard.className = 'stat-card';
-      totalSalesCard.innerHTML = `
-        <div class="stat-title">총 매출액</div>
-        <div class="stat-value" id="total-sales">0원</div>
-      `;
-      
-      const totalCountCard = document.createElement('div');
-      totalCountCard.className = 'stat-card';
-      totalCountCard.innerHTML = `
-        <div class="stat-title">총 건수</div>
-        <div class="stat-value" id="total-count">0건</div>
-      `;
-      
-      statsContainer.appendChild(totalSalesCard);
-      statsContainer.appendChild(totalCountCard);
-    }
-    
-    // 통계 카드 업데이트
-    const totalSalesElement = document.getElementById('total-sales');
-    if (totalSalesElement) {
-      totalSalesElement.textContent = totalAmount.toLocaleString() + '원';
-    }
-    
-    const totalCountElement = document.getElementById('total-count');
-    if (totalCountElement) {
-      totalCountElement.textContent = totalCount.toLocaleString() + '건';
-    }
-    
-  } catch (error) {
-    console.error('매출 데이터 렌더링 중 오류:', error);
-    ToastNotification.show('매출 데이터를 불러오는 중 오류가 발생했습니다.', 'error');
-  }
-}
-
-function updateSalesChart(salesData) {
-  try {
-    // salesData가 배열이 아닌 경우 빈 배열로 처리
-    const data = Array.isArray(salesData) ? salesData : [];
-    
-    // 차트 컨테이너 확인 및 생성
-    let salesChartDiv = document.querySelector('.sales-chart');
-    if (!salesChartDiv) {
-      salesChartDiv = document.createElement('div');
-      salesChartDiv.className = 'sales-chart';
-      const salesPage = document.getElementById('sales-page');
-      if (salesPage) {
-        // 차트를 추가할 적절한 위치 찾기
-        const salesHeader = salesPage.querySelector('.sales-header');
-        if (salesHeader) {
-          salesPage.insertBefore(salesChartDiv, salesHeader.nextSibling);
-        } else {
-          salesPage.appendChild(salesChartDiv);
-        }
-      } else {
-        console.error('매출 페이지를 찾을 수 없습니다.');
-        return;
-      }
-    }
-    
-    let chartContainer = document.getElementById('sales-chart-container');
-    if (!chartContainer) {
-      chartContainer = document.createElement('div');
-      chartContainer.id = 'sales-chart-container';
-      chartContainer.style.height = '300px';
-      chartContainer.style.marginBottom = '20px';
-      salesChartDiv.appendChild(chartContainer);
-    }
-
-    // 캔버스 확인 및 생성
-    let canvas = document.getElementById('sales-chart');
-    if (!canvas) {
-      canvas = document.createElement('canvas');
-      canvas.id = 'sales-chart';
-      chartContainer.appendChild(canvas);
-    }
-
-    // 기존 차트 제거
-    if (window.salesChart instanceof Chart) {
-      window.salesChart.destroy();
-    }
-
-    // 차트 데이터 준비
-    const labels = data.map(item => {
-      const date = new Date(item.date);
-      return date.toLocaleDateString('ko-KR');
-    });
-    
-    const amounts = data.map(item => item.total_amount || 0);
-    const counts = data.map(item => item.count || 0);
-
-    // 새 차트 생성
-    const ctx = canvas.getContext('2d');
-    window.salesChart = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: labels,
-        datasets: [
-          {
-            label: '매출액',
-            data: amounts,
-            borderColor: 'rgb(75, 192, 192)',
-            backgroundColor: 'rgba(75, 192, 192, 0.2)',
-            borderWidth: 2,
-            tension: 0.4,
-            fill: true,
-            pointRadius: 4,
-            pointHoverRadius: 6,
-            yAxisID: 'y'
-          },
-          {
-            label: '건수',
-            data: counts,
-            borderColor: 'rgb(255, 99, 132)',
-            backgroundColor: 'rgba(255, 99, 132, 0.2)',
-            borderWidth: 2,
-            tension: 0.4,
-            pointRadius: 4,
-            pointHoverRadius: 6,
-            yAxisID: 'y1'
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        interaction: {
-          mode: 'index',
-          intersect: false,
-        },
-        plugins: {
-          legend: {
-            position: 'top',
-            labels: {
-              font: {
-                size: 14,
-                weight: 'bold'
-              },
-              padding: 20
-            }
-          },
-          tooltip: {
-            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-            padding: 12,
-            titleFont: {
-              size: 14,
-              weight: 'bold'
-            },
-            bodyFont: {
-              size: 13
-            },
-            callbacks: {
-              label: function(context) {
-                if (context.dataset.label === '매출액') {
-                  return `매출: ${context.parsed.y.toLocaleString()}원`;
-                } else {
-                  return `건수: ${context.parsed.y}건`;
-                }
-              }
-            }
-          }
-        },
-        scales: {
-          y: {
-            type: 'linear',
-            display: true,
-            position: 'left',
-            title: {
-              display: true,
-              text: '매출액 (만원)',
-              font: {
-                size: 14,
-                weight: 'bold'
-              }
-            },
-            ticks: {
-              callback: function(value) {
-                return (value / 10000).toLocaleString() + '만원';
-              },
-              font: {
-                size: 12,
-                weight: 'bold'
-              }
-            }
-          },
-          y1: {
-            type: 'linear',
-            display: true,
-            position: 'right',
-            title: {
-              display: true,
-              text: '건수',
-              font: {
-                size: 14,
-                weight: 'bold'
-              }
-            },
-            grid: {
-              drawOnChartArea: false
-            }
-          }
-        }
-      }
-    });
-  } catch (error) {
-    console.error('차트 업데이트 오류:', error);
-    ToastNotification.show('매출 차트를 업데이트하는 중 오류가 발생했습니다.', 'error');
-  }
-}
-
-// 계정 목록 조회 및 렌더링
-async function renderAccountsTable() {
-    try {
-        const accounts = await API.getUsers();
-        const tbody = document.querySelector('#accounts-table tbody');
-        tbody.innerHTML = '';
-
-        // admin 계정을 제외하고 표시
-        const filteredAccounts = accounts.filter(account => account.role !== 'admin');
-
-        filteredAccounts.forEach(account => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${account.role === 'staff' ? '직원' : '관리자'}</td>
-                <td>${account.email}</td>
-                <td>${account.name}</td>
-                <td>${account.phone || '-'}</td>
-                <td>${account.memo || '-'}</td>
-                <td>
-                    <button class="btn btn-sm btn-secondary edit-account" data-id="${account.id}">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn btn-sm btn-danger delete-account" data-id="${account.id}">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
-
-        // 이벤트 리스너 추가
-        document.querySelectorAll('.edit-account').forEach(btn => {
-            btn.addEventListener('click', () => openAccountModal(btn.dataset.id));
-        });
-
-        document.querySelectorAll('.delete-account').forEach(btn => {
-            btn.addEventListener('click', async () => {
-                if (confirm('정말로 이 계정을 삭제하시겠습니까?')) {
-                    try {
-                        await API.deleteUser(btn.dataset.id);
-                        ToastNotification.show('계정이 삭제되었습니다.', 'success');
-                        renderAccountsTable();
-                    } catch (error) {
-                        ToastNotification.show('계정 삭제 중 오류가 발생했습니다.', 'error');
-                    }
-                }
-            });
-        });
-    } catch (error) {
-        console.error('계정 목록 로딩 중 오류:', error);
-        ToastNotification.show('계정 목록을 불러오는 중 오류가 발생했습니다.', 'error');
-    }
-}
-
-export default {
-    // 필요한 경우 외부에서 접근할 함수 노출
-};
-        
-// Chart.js 전역 초기화 함수
-function initChartJS() {
-    // 기존 차트 모두 정리
-    if (window.Chart && window.Chart.instances) {
-        Object.keys(window.Chart.instances).forEach(id => {
-            try {
-                const chartInstance = window.Chart.instances[id];
-                if (chartInstance) {
-                    chartInstance.destroy();
-                }
-            } catch (err) {
-                console.warn('Chart.js 레지스트리 정리 중 오류:', err);
-            }
-        });
-    }
-    
-    // Chart.js 전역 설정
-    if (window.Chart && window.Chart.defaults) {
-        // 반응형 설정
-        Chart.defaults.responsive = true;
-        Chart.defaults.maintainAspectRatio = false;
-        
-        // 애니메이션 최적화
-        Chart.defaults.animation = {
-            duration: 750,
-            easing: 'easeOutQuart'
-        };
-        
-        // 글꼴 및 텍스트 스타일
-        Chart.defaults.font = {
-            family: "'Noto Sans KR', 'Helvetica', 'Arial', sans-serif",
-            size: 12
-        };
-        
-        // 전역 색상 테마
-        Chart.defaults.borderColor = 'rgba(0, 0, 0, 0.1)';
-        Chart.defaults.color = '#555555';
-    }
-}
-        
