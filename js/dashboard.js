@@ -371,10 +371,57 @@ function initAppointmentEvents() {
         }
     });
 
-    // 서비스 버튼 토글
+    // 서비스 버튼 토글 및 종료시간 자동 계산
     document.addEventListener('click', (e) => {
         if (e.target.matches('.service-btn')) {
-            e.target.classList.toggle('active');
+            // 기존 모든 버튼 비활성화
+            document.querySelectorAll('.service-btn').forEach(btn => btn.classList.remove('active'));
+            
+            // 클릭한 버튼 활성화
+            e.target.classList.add('active');
+            
+            // 서비스 이름과 기본 시간 설정
+            const service = e.target.dataset.service;
+            let duration = 30; // 기본 30분
+            
+            // 서비스별 기본 시간 설정
+            switch (service) {
+                case '목욕':
+                    duration = 30;
+                    break;
+                case '부분+목욕':
+                    duration = 45;
+                    break;
+                case '부분+목욕+얼컷':
+                    duration = 60;
+                    break;
+                case '전체미용':
+                    duration = 90;
+                    break;
+                case '스포팅':
+                    duration = 120;
+                    break;
+                case '전체가위컷':
+                    duration = 150;
+                    break;
+                default:
+                    duration = 30;
+            }
+            
+            // hidden input에 서비스 이름 저장
+            const selectedServiceInput = document.getElementById('selected-service');
+            if (selectedServiceInput) {
+                selectedServiceInput.value = service;
+            }
+            
+            // 시간 선택 드롭다운에 표시 및 선택
+            const durationSelect = document.getElementById('appointment-duration');
+            if (durationSelect) {
+                durationSelect.value = duration;
+                
+                // 종료 시간 업데이트
+                updateEndTime(duration);
+            }
         }
     });
 
@@ -2421,7 +2468,7 @@ async function renderSalesData() {
     
   } catch (error) {
     console.error('매출 데이터 렌더링 중 오류:', error);
-    ToastNotification.error('매출 데이터를 불러오는 중 오류가 발생했습니다.');
+    ToastNotification.show('매출 데이터를 불러오는 중 오류가 발생했습니다.', 'error');
   }
 }
 
@@ -2431,12 +2478,32 @@ function updateSalesChart(salesData) {
     const data = Array.isArray(salesData) ? salesData : [];
     
     // 차트 컨테이너 확인 및 생성
+    let salesChartDiv = document.querySelector('.sales-chart');
+    if (!salesChartDiv) {
+      salesChartDiv = document.createElement('div');
+      salesChartDiv.className = 'sales-chart';
+      const salesPage = document.getElementById('sales-page');
+      if (salesPage) {
+        // 차트를 추가할 적절한 위치 찾기
+        const salesHeader = salesPage.querySelector('.sales-header');
+        if (salesHeader) {
+          salesPage.insertBefore(salesChartDiv, salesHeader.nextSibling);
+        } else {
+          salesPage.appendChild(salesChartDiv);
+        }
+      } else {
+        console.error('매출 페이지를 찾을 수 없습니다.');
+        return;
+      }
+    }
+    
     let chartContainer = document.getElementById('sales-chart-container');
     if (!chartContainer) {
       chartContainer = document.createElement('div');
       chartContainer.id = 'sales-chart-container';
       chartContainer.style.height = '300px';
-      document.querySelector('.sales-chart').appendChild(chartContainer);
+      chartContainer.style.marginBottom = '20px';
+      salesChartDiv.appendChild(chartContainer);
     }
 
     // 캔버스 확인 및 생성
@@ -2472,14 +2539,23 @@ function updateSalesChart(salesData) {
             label: '매출액',
             data: amounts,
             borderColor: 'rgb(75, 192, 192)',
-            tension: 0.1,
+            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+            borderWidth: 2,
+            tension: 0.4,
+            fill: true,
+            pointRadius: 4,
+            pointHoverRadius: 6,
             yAxisID: 'y'
           },
           {
             label: '건수',
             data: counts,
             borderColor: 'rgb(255, 99, 132)',
-            tension: 0.1,
+            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+            borderWidth: 2,
+            tension: 0.4,
+            pointRadius: 4,
+            pointHoverRadius: 6,
             yAxisID: 'y1'
           }
         ]
@@ -2491,6 +2567,38 @@ function updateSalesChart(salesData) {
           mode: 'index',
           intersect: false,
         },
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: {
+              font: {
+                size: 14,
+                weight: 'bold'
+              },
+              padding: 20
+            }
+          },
+          tooltip: {
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            padding: 12,
+            titleFont: {
+              size: 14,
+              weight: 'bold'
+            },
+            bodyFont: {
+              size: 13
+            },
+            callbacks: {
+              label: function(context) {
+                if (context.dataset.label === '매출액') {
+                  return `매출: ${context.parsed.y.toLocaleString()}원`;
+                } else {
+                  return `건수: ${context.parsed.y}건`;
+                }
+              }
+            }
+          }
+        },
         scales: {
           y: {
             type: 'linear',
@@ -2498,7 +2606,20 @@ function updateSalesChart(salesData) {
             position: 'left',
             title: {
               display: true,
-              text: '매출액 (원)'
+              text: '매출액 (만원)',
+              font: {
+                size: 14,
+                weight: 'bold'
+              }
+            },
+            ticks: {
+              callback: function(value) {
+                return (value / 10000).toLocaleString() + '만원';
+              },
+              font: {
+                size: 12,
+                weight: 'bold'
+              }
             }
           },
           y1: {
@@ -2507,7 +2628,11 @@ function updateSalesChart(salesData) {
             position: 'right',
             title: {
               display: true,
-              text: '건수'
+              text: '건수',
+              font: {
+                size: 14,
+                weight: 'bold'
+              }
             },
             grid: {
               drawOnChartArea: false
@@ -2518,7 +2643,7 @@ function updateSalesChart(salesData) {
     });
   } catch (error) {
     console.error('차트 업데이트 오류:', error);
-    ToastNotification.error('매출 차트를 업데이트하는 중 오류가 발생했습니다.');
+    ToastNotification.show('매출 차트를 업데이트하는 중 오류가 발생했습니다.', 'error');
   }
 }
 
