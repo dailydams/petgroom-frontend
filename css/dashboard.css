@@ -2501,3 +2501,93 @@ header {
     color: #e55c7a;
     font-weight: 600;
 }
+
+/* 알림톡 미리보기 및 편집 관련 스타일 */
+.alimtalk-preview-container {
+    margin-top: 15px;
+    border: 1px solid #f0e4eb;
+    border-radius: 10px;
+    background-color: #faf8fa;
+    padding: 15px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.alimtalk-preview {
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.alimtalk-preview h4 {
+    color: #e091b9;
+    font-size: 16px;
+    margin-bottom: 10px;
+    border-bottom: 1px dashed #f0e4eb;
+    padding-bottom: 8px;
+}
+
+.alimtalk-content {
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.alimtalk-content p {
+    margin: 5px 0;
+}
+
+#edit-alimtalk-btn {
+    margin-left: 10px;
+    background-color: #f0e4eb;
+    border-color: #e091b9;
+    color: #945175;
+}
+
+#edit-alimtalk-btn:hover {
+    background-color: #e091b9;
+    color: #fff;
+}
+
+.template-textarea {
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    min-height: 200px;
+}
+
+.template-placeholder-guide {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid #e091b9;
+}
+
+.template-placeholder-guide h4 {
+    color: #945175;
+    margin-bottom: 10px;
+    font-size: 15px;
+}
+
+.template-placeholder-guide ul {
+    padding-left: 20px;
+}
+
+.template-placeholder-guide li {
+    margin-bottom: 5px;
+    font-size: 13px;
+}
+
+.template-placeholder-guide code {
+    background-color: #f0e4eb;
+    padding: 2px 5px;
+    border-radius: 3px;
+    color: #945175;
+    font-family: 'Courier New', monospace;
+}
+
+.alimtalk-template-selector {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 15px;
+}
