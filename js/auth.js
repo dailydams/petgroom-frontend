@@ -74,6 +74,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                     sessionStorage.setItem('currentUser', JSON.stringify(response.user));
                     
                     // 대시보드로 리디렉션
+                    console.log('로그인 성공, 대시보드로 이동합니다.');
                     window.location.href = 'dashboard.html';
                 } catch (error) {
                     LoadingIndicator.hide();
