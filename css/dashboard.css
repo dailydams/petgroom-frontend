@@ -1181,9 +1181,15 @@ header {
     max-width: 800px;
     margin: 2rem auto;
     background-color: var(--white);
-    border-radius: var(--border-radius-md);
-    box-shadow: var(--shadow-lg);
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
     animation: modalSlideIn var(--transition-normal);
+    border: none;
+    background-image: url('https://img.freepik.com/free-vector/cute-dog-cat-friend-doodle-background_125540-947.jpg');
+    background-size: 200px;
+    background-repeat: repeat;
+    background-blend-mode: overlay;
+    background-opacity: 0.1;
 }
 
 @keyframes modalSlideIn {
@@ -1198,8 +1204,11 @@ header {
 }
 
 .modal-header {
-    padding: 1.25rem 1.5rem;
-    border-bottom: 1px solid var(--gray-300);
+    padding: 15px 20px;
+    border-bottom: 3px dashed #ffd9e2;
+    background-color: #fff8fa;
+    border-top-left-radius: 15px;
+    border-top-right-radius: 15px;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -1226,9 +1235,18 @@ header {
 }
 
 .modal-body {
-    padding: 1.5rem;
+    padding: 25px;
+    background-color: rgba(255, 255, 255, 0.9);
     max-height: 80vh;
     overflow-y: auto;
+}
+
+.modal-footer {
+    border-top: 3px dashed #ffd9e2;
+    background-color: #fff8fa;
+    border-bottom-left-radius: 15px;
+    border-bottom-right-radius: 15px;
+    padding: 15px 20px;
 }
 
 /* Animations */
