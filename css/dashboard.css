@@ -1280,6 +1280,7 @@ header {
         width: 280px;
         z-index: 100;
         transition: left var(--transition-normal);
+        box-shadow: var(--shadow-lg);
     }
     
     .menu-text,
@@ -1300,7 +1301,6 @@ header {
     
     .sidebar-mobile-open .sidebar {
         left: 0;
-        box-shadow: var(--shadow-lg);
     }
     
     .sidebar-mobile-open::after {
@@ -1312,6 +1312,13 @@ header {
         height: 100%;
         background-color: rgba(0, 0, 0, 0.5);
         z-index: 99;
+        opacity: 1;
+        transition: opacity var(--transition-normal);
+    }
+    
+    .sidebar:not(.sidebar-mobile-open)::after {
+        opacity: 0;
+        pointer-events: none;
     }
     
     header {
@@ -1646,4 +1653,519 @@ header {
 .pet-select-confirm {
     width: 100%;
     margin-top: 8px;
+}
+
+/* 신규예약 모달 스타일 */
+#appointment-modal .modal-content {
+    max-width: 800px;
+    width: 95%;
+    margin: 2rem auto;
+    background: var(--white);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-lg);
+}
+
+#appointment-modal .modal-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--gray-200);
+    background: var(--primary-gradient);
+    color: var(--white);
+    border-radius: var(--border-radius-lg) var(--border-radius-lg) 0 0;
+}
+
+#appointment-modal .modal-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+#appointment-modal .modal-header .close {
+    color: var(--white);
+    opacity: 0.8;
+    transition: opacity var(--transition-fast);
+}
+
+#appointment-modal .modal-header .close:hover {
+    opacity: 1;
+}
+
+#appointment-modal .modal-body {
+    padding: 2rem;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+#appointment-modal .form-section {
+    background: var(--white);
+    border-radius: var(--border-radius-md);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: var(--shadow-sm);
+    position: relative;
+    border: 1px solid var(--gray-200);
+}
+
+#appointment-modal .section-number {
+    position: absolute;
+    top: -12px;
+    left: 20px;
+    width: 24px;
+    height: 24px;
+    background: var(--primary);
+    color: var(--white);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+#appointment-modal .form-section h3 {
+    margin: 0 0 1.5rem 0;
+    color: var(--gray-800);
+    font-size: 1.2rem;
+    font-weight: 600;
+    padding-left: 1rem;
+}
+
+#appointment-modal .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+#appointment-modal .form-group {
+    margin-bottom: 1rem;
+}
+
+#appointment-modal .form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: var(--gray-700);
+    font-weight: 500;
+    font-size: 0.95rem;
+}
+
+#appointment-modal .form-control {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+    border: 1px solid var(--gray-300);
+    border-radius: var(--border-radius-sm);
+    transition: all var(--transition-fast);
+}
+
+#appointment-modal .form-control:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.1);
+    outline: none;
+}
+
+#appointment-modal .checkbox-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 1rem 0;
+}
+
+#appointment-modal .checkbox-group input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--gray-400);
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+#appointment-modal .checkbox-group label {
+    margin: 0;
+    cursor: pointer;
+}
+
+#appointment-modal .time-range {
+    margin-top: 1rem;
+}
+
+#appointment-modal .time-inputs {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+#appointment-modal .time-inputs input {
+    flex: 1;
+}
+
+#appointment-modal .time-inputs span {
+    color: var(--gray-600);
+    font-weight: 500;
+}
+
+#appointment-modal .pet-container {
+    background: var(--gray-50);
+    border-radius: var(--border-radius-md);
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+    border: 1px solid var(--gray-200);
+}
+
+#appointment-modal .pet-container:last-child {
+    margin-bottom: 0;
+}
+
+#appointment-modal .form-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--gray-200);
+}
+
+#appointment-modal .btn {
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+    font-weight: 500;
+    border-radius: var(--border-radius-md);
+    transition: all var(--transition-fast);
+}
+
+#appointment-modal .btn-primary {
+    background: var(--primary-gradient);
+    color: var(--white);
+    border: none;
+}
+
+#appointment-modal .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+#appointment-modal .btn-danger {
+    background: var(--white);
+    color: var(--danger);
+    border: 1px solid var(--danger);
+}
+
+#appointment-modal .btn-danger:hover {
+    background: var(--danger);
+    color: var(--white);
+}
+
+#appointment-modal .service-buttons {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+#appointment-modal .service-btn {
+    padding: 0.75rem;
+    border: 1px solid var(--gray-300);
+    border-radius: var(--border-radius-sm);
+    background: var(--white);
+    color: var(--gray-700);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+#appointment-modal .service-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+#appointment-modal .service-btn.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: var(--white);
+}
+
+#appointment-modal .search-results-container {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--border-radius-md);
+    box-shadow: var(--shadow-md);
+    z-index: 1000;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+#appointment-modal .search-result-item {
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    transition: background-color var(--transition-fast);
+}
+
+#appointment-modal .search-result-item:hover {
+    background-color: var(--gray-50);
+}
+
+#appointment-modal .pet-selection-container {
+    background: var(--gray-50);
+    border-radius: var(--border-radius-md);
+    padding: 1rem;
+    margin: 1rem 0;
+}
+
+#appointment-modal .pet-selection-list {
+    display: grid;
+    gap: 0.5rem;
+    margin: 0.75rem 0;
+}
+
+#appointment-modal .pet-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    background: var(--white);
+    border-radius: var(--border-radius-sm);
+    border: 1px solid var(--gray-200);
+}
+
+#appointment-modal .pet-option:hover {
+    border-color: var(--primary);
+}
+
+#appointment-modal .pet-select-confirm {
+    width: 100%;
+    margin-top: 1rem;
+}
+
+@media (max-width: 768px) {
+    #appointment-modal .modal-content {
+        width: 100%;
+        margin: 0;
+        height: 100vh;
+        border-radius: 0;
+    }
+    
+    #appointment-modal .modal-header {
+        border-radius: 0;
+    }
+    
+    #appointment-modal .modal-body {
+        padding: 1rem;
+    }
+    
+    #appointment-modal .form-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    #appointment-modal .form-buttons {
+        flex-direction: column;
+    }
+    
+    #appointment-modal .btn {
+        width: 100%;
+    }
+}
+
+/* 매출 관리 섹션 스타일 */
+.sales-section {
+    background: var(--white);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-md);
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.sales-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--gray-200);
+}
+
+.sales-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--gray-800);
+}
+
+.sales-filters {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.period-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.period-btn {
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--gray-300);
+    border-radius: var(--border-radius-sm);
+    background: var(--white);
+    color: var(--gray-700);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.period-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.period-btn.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: var(--white);
+}
+
+.staff-filter {
+    padding: 0.5rem;
+    border: 1px solid var(--gray-300);
+    border-radius: var(--border-radius-sm);
+    background: var(--white);
+    color: var(--gray-700);
+    font-size: 0.9rem;
+    min-width: 150px;
+}
+
+.chart-container {
+    position: relative;
+    height: 400px;
+    margin: 1.5rem 0;
+    padding: 1rem;
+    background: var(--white);
+    border-radius: var(--border-radius-md);
+    box-shadow: var(--shadow-sm);
+}
+
+.sales-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.stat-card {
+    background: var(--white);
+    border-radius: var(--border-radius-md);
+    padding: 1.25rem;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--gray-200);
+}
+
+.stat-title {
+    font-size: 0.9rem;
+    color: var(--gray-600);
+    margin-bottom: 0.5rem;
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--gray-800);
+}
+
+.stat-value.positive {
+    color: var(--success);
+}
+
+.stat-value.negative {
+    color: var(--danger);
+}
+
+.sales-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin-top: 1.5rem;
+}
+
+.sales-table th,
+.sales-table td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--gray-200);
+}
+
+.sales-table th {
+    background: var(--gray-50);
+    font-weight: 600;
+    color: var(--gray-700);
+}
+
+.sales-table tr:hover {
+    background: var(--gray-50);
+}
+
+.sales-table .amount {
+    font-weight: 500;
+    text-align: right;
+}
+
+.sales-table .status {
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--border-radius-sm);
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.sales-table .status.completed {
+    background: var(--success-light);
+    color: var(--success);
+}
+
+.sales-table .status.pending {
+    background: var(--warning-light);
+    color: var(--warning);
+}
+
+.sales-table .status.cancelled {
+    background: var(--danger-light);
+    color: var(--danger);
+}
+
+@media (max-width: 768px) {
+    .sales-header {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .sales-filters {
+        width: 100%;
+        flex-direction: column;
+    }
+    
+    .period-buttons {
+        width: 100%;
+        overflow-x: auto;
+        padding-bottom: 0.5rem;
+    }
+    
+    .period-btn {
+        white-space: nowrap;
+    }
+    
+    .staff-filter {
+        width: 100%;
+    }
+    
+    .chart-container {
+        height: 300px;
+    }
+    
+    .sales-stats {
+        grid-template-columns: 1fr;
+    }
+    
+    .sales-table {
+        display: block;
+        overflow-x: auto;
+    }
 }
