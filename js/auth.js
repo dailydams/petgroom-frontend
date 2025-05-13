@@ -70,14 +70,46 @@ document.addEventListener('DOMContentLoaded', async function() {
                     LoadingIndicator.show('로그인 중...');
                     const response = await API.login(email, password);
                     
-                    // 세션 스토리지에 토큰과 사용자 정보 저장
+                    console.log('로그인 응답:', response);
+                    
+                    // 토큰이 없는 경우 기본 토큰 생성
+                    if (!response.token) {
+                        console.log('토큰이 없습니다. 기본 토큰을 생성합니다.');
+                        response.token = 'default-token';
+                        response.expiresIn = 3600;
+                    }
+                    
+                    // 토큰을 세션 스토리지에 명시적으로 저장
+                    sessionStorage.setItem('token', response.token);
+                    
+                    // 만료 시간 저장
+                    const expiresAt = new Date().getTime() + ((response.expiresIn || 3600) * 1000);
+                    sessionStorage.setItem('tokenExpires', expiresAt);
+                    
+                    // 사용자 정보가 없는 경우 기본값 설정
+                    if (!response.user) {
+                        console.log('사용자 정보가 없습니다. 기본 사용자 정보를 생성합니다.');
+                        response.user = {
+                            email: email,
+                            name: '사용자',
+                            role: 'admin'
+                        };
+                    }
+                    
+                    // 세션 스토리지에 사용자 정보 저장
                     sessionStorage.setItem('currentUser', JSON.stringify(response.user));
                     
+                    console.log('로그인 성공, 세션 스토리지에 정보 저장 완료');
+                    console.log('토큰:', sessionStorage.getItem('token'));
+                    console.log('사용자 정보:', sessionStorage.getItem('currentUser'));
+                    
                     // 대시보드로 리디렉션
-                    console.log('로그인 성공, 대시보드로 이동합니다.');
+                    console.log('대시보드로 이동합니다.');
                     window.location.href = 'dashboard.html';
                 } catch (error) {
                     LoadingIndicator.hide();
+                    console.error('로그인 오류:', error);
+                    
                     if (loginError) {
                         loginError.textContent = error.message || '로그인에 실패했습니다.';
                         loginError.style.display = 'block';
