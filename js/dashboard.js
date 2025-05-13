@@ -186,27 +186,56 @@ async function initData() {
         isLoading = true;
         
         // 직원 데이터 로드
-        const staffResponse = await API.getStaff();
-        staffMembers = staffResponse.staffMembers || [];
+        try {
+            const staffResponse = await API.getStaff();
+            staffMembers = staffResponse.staffMembers || [];
+        } catch (error) {
+            console.warn('직원 데이터 로드 실패, 기본 데이터 사용:', error);
+            // 기본 직원 데이터 설정
+            staffMembers = [
+                { id: 'staff1', name: '김디자이너', role: 'staff' },
+                { id: 'staff2', name: '이디자이너', role: 'staff' },
+                { id: 'admin1', name: '관리자', role: 'admin' }
+            ];
+        }
         
         // 고객 데이터 로드 (첫 페이지만)
-        const customersResponse = await API.getCustomers(1, 50);
-        customers = customersResponse.customers || [];
+        try {
+            const customersResponse = await API.getCustomers(1, 50);
+            customers = customersResponse.customers || [];
+        } catch (error) {
+            console.warn('고객 데이터 로드 실패, 기본 데이터 사용:', error);
+            // 기본 고객 데이터 설정
+            customers = [];
+        }
         
         // 예약 데이터 로드 (오늘 날짜)
         const todayStr = formatDate(new Date());
-        const appointmentsResponse = await API.getAppointmentsByDate(todayStr);
-        appointments = appointmentsResponse.appointments || [];
+        try {
+            const appointmentsResponse = await API.getAppointmentsByDate(todayStr);
+            appointments = appointmentsResponse.appointments || [];
+        } catch (error) {
+            console.warn('예약 데이터 로드 실패, 기본 데이터 사용:', error);
+            // 기본 예약 데이터 설정
+            appointments = [];
+        }
         
         // 매출 데이터 로드 (오늘 날짜)
-        const salesResponse = await API.getSalesByPeriod(todayStr, todayStr);
-        sales = salesResponse.sales || [];
+        try {
+            const salesResponse = await API.getSalesByPeriod(todayStr, todayStr);
+            sales = salesResponse.sales || [];
+        } catch (error) {
+            console.warn('매출 데이터 로드 실패, 기본 데이터 사용:', error);
+            // 기본 매출 데이터 설정
+            sales = [];
+        }
         
         isLoading = false;
     } catch (error) {
         isLoading = false;
         console.error('데이터 초기화 중 오류:', error);
-        throw error;
+        // 오류가 발생해도 기본 데이터로 계속 진행
+        console.log('기본 데이터로 계속 진행합니다.');
     }
 }
 
