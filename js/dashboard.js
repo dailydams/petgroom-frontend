@@ -419,6 +419,24 @@ function initEventListeners() {
     document.getElementById('cancel-sale-btn').addEventListener('click', () => {
         document.getElementById('sale-modal').style.display = 'none';
     });
+    
+    // 예약 폼 제출 이벤트
+    const appointmentForm = document.getElementById('appointment-form');
+    if (appointmentForm) {
+        appointmentForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            await saveAppointmentFromForm(this);
+        });
+    }
+    
+    // 고객 폼 제출 이벤트
+    const customerForm = document.getElementById('customer-form');
+    if (customerForm) {
+        customerForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            saveCustomerFromForm();
+        });
+    }
 }
 
 // 예약관리 페이지 이벤트
@@ -1011,107 +1029,126 @@ async function loadCalendar() {
 }
 
 // 예약 저장
-async function saveAppointment() {
+async function saveAppointmentFromForm(form) {
     try {
-        LoadingIndicator.show('예약을 처리 중입니다...');
+        LoadingIndicator.show('예약 저장 중...');
         
-        // 폼 데이터 수집 및 형식화
-        const date = document.getElementById('appointment-date').value;
-        const startTime = document.getElementById('appointment-start-time').value;
-        const endTime = document.getElementById('appointment-end-time').value;
-        const guardianName = document.getElementById('guardian-name').value;
-        const guardianPhone = document.getElementById('guardian-phone').value;
-        const service = document.getElementById('selected-service').value;
-        const staffId = document.getElementById('staff-assigned').value;
+        // 폼 데이터 수집
+        const guardianName = form.querySelector('#guardian-name').value;
+        const guardianPhone = form.querySelector('#guardian-phone').value;
+        const guardianMemo = form.querySelector('#guardian-memo').value;
+        const alimtalkConsent = form.querySelector('#alimtalk-consent').checked;
         
-        // 반려동물 정보 수집
-        const petContainers = document.querySelectorAll('#pet-containers .pet-container');
-        const pets = Array.from(petContainers).map((container) => {
+        // 반려동물 정보 처리
+        const pets = Array.from(document.querySelectorAll('.pet-container')).map(container => {
+            const nameElement = container.querySelector('[name^="pet_name"]');
+            const breedElement = container.querySelector('[name^="pet_breed"]');
+            const ageElement = container.querySelector('[name^="pet_age"]');
+            const weightElement = container.querySelector('[name^="pet_weight"]');
+            const memoElement = container.querySelector('[name^="pet_memo"]');
+            
             return {
-                name: container.querySelector('.pet-name').value,
-                breed: container.querySelector('.pet-breed').value,
-                weight: parseFloat(container.querySelector('.pet-weight').value),
-                age: container.querySelector('.pet-age').value || null,
-                memo: container.querySelector('.pet-memo').value || ''
+                name: nameElement ? nameElement.value : '',
+                breed: breedElement ? breedElement.value : '',
+                age: ageElement ? ageElement.value : '',
+                weight: weightElement ? weightElement.value : '',
+                memo: memoElement ? memoElement.value : ''
             };
         });
         
-        // 알림톡 옵션 확인
-        const alimtalkOption = document.querySelector('input[name="alimtalk-option"]:checked').value;
+        // 예약 정보
+        const appointmentDate = form.querySelector('#appointment-date').value;
+        const startTime = form.querySelector('#appointment-start-time').value;
+        const endTime = form.querySelector('#appointment-end-time').value;
+        const staffId = form.querySelector('#staff-assigned').value;
+        const serviceName = form.querySelector('#selected-service').value;
+        const appointmentMemo = form.querySelector('#appointment-memo').value;
         
-        // 동의서 확인
-        const defaultAgreement = document.getElementById('agreement-default').checked;
-        const seniorAgreement = document.getElementById('agreement-senior').checked;
+        // 알림톡 정보
+        const alimtalkOption = form.querySelector('input[name="alimtalk-option"]:checked').value;
         
-        // 기타 정보
-        const guardianMemo = document.getElementById('guardian-memo').value || '';
-        const appointmentMemo = document.getElementById('appointment-memo').value || '';
-        const alimtalkConsent = document.getElementById('alimtalk-consent').checked;
+        // 동의서 정보
+        const defaultAgreement = form.querySelector('#agreement-default').checked;
+        const seniorAgreement = form.querySelector('#agreement-senior').checked;
         
-        // 스태프 객체 찾기
-        const staffMember = staffMembers.find(s => s.id === staffId);
-
-        // API 호출을 위한 데이터 객체 생성
+        // 예약 데이터 구성
         const appointmentData = {
-            date,
-            startTime,
-            endTime,
-            guardian: {
+            customerId: '', // 고객 ID 필드 (예약 저장 후 할당)
+            customer: {
                 name: guardianName,
                 phone: guardianPhone,
                 memo: guardianMemo,
-                alimtalkConsent: alimtalkConsent
+                alimtalkConsent
             },
             pets,
-            service,
-            staff: staffMember,
-            status: 'reserved',
+            date: appointmentDate,
+            startTime,
+            endTime,
+            staffId,
+            service: serviceName,
+            status: 'scheduled',
             memo: appointmentMemo,
-            alimtalk: alimtalkOption,
+            alimtalk: {
+                option: alimtalkOption,
+                sent: false
+            },
             agreements: {
                 default: defaultAgreement,
                 senior: seniorAgreement
-            }
+            },
+            createdAt: new Date().toISOString()
         };
         
-        // 예약 저장 API 호출
-        const response = await API.saveAppointment(appointmentData);
+        console.log('예약 저장 데이터:', appointmentData);
         
-        // 새 예약 ID 설정 (새 예약의 경우)
-        const appointmentId = response.id;
-        
-        // 알림톡 발송
-        if (alimtalkOption !== 'none' && alimtalkConsent) {
-            const alimtalkResult = await sendAlimtalk({
-                ...appointmentData,
-                id: appointmentId
-            });
+        // API 호출
+        try {
+            // 예약 API 호출
+            const response = await API.saveAppointment(appointmentData);
             
-            if (!alimtalkResult.success) {
-                console.warn('알림톡 발송 실패:', alimtalkResult.reason);
+            if (response.success) {
+                ToastNotification.show('예약이 성공적으로 저장되었습니다.', 'success');
+                
+                // 예약 모달 닫기
+                document.getElementById('appointment-modal').style.display = 'none';
+                
+                // 캘린더 새로고침
+                loadCalendar();
+                
+                // 상태가 alimtalk 발송이면 알림톡 전송
+                if (alimtalkOption !== 'none' && alimtalkConsent) {
+                    sendAppointmentAlimtalk(appointmentData, response.appointment?.id);
+                }
+            } else {
+                throw new Error(response.message || '예약 저장에 실패했습니다.');
             }
+        } catch (apiError) {
+            console.error('API 예약 저장 실패:', apiError);
+            
+            // API 오류 시 백업으로 로컬 저장
+            const appointment = {
+                ...appointmentData,
+                id: Date.now().toString(), // 로컬 아이디 생성
+            };
+            
+            // 로컬 저장소에 저장
+            const savedAppointments = JSON.parse(localStorage.getItem('appointments') || '[]');
+            savedAppointments.push(appointment);
+            localStorage.setItem('appointments', JSON.stringify(savedAppointments));
+            
+            ToastNotification.show('서버 저장 실패로 로컬에 예약 정보가 저장되었습니다.', 'warning');
+            
+            // 예약 모달 닫기
+            document.getElementById('appointment-modal').style.display = 'none';
+            
+            // 캘린더 새로고침
+            loadCalendar();
         }
-        
-        // 예약 목록 업데이트
-        if (date === formatDate(currentDate)) {
-            const updatedAppointmentsResponse = await API.getAppointmentsByDate(date);
-            appointments = updatedAppointmentsResponse.appointments || [];
-        }
-        
-        // 모달 닫기
-        document.getElementById('appointment-modal').style.display = 'none';
-        
-        // 캘린더 새로고침
-        await loadCalendar();
-        
-        // 성공 메시지
-        ToastNotification.show('예약이 정상적으로 등록되었습니다.', 'success');
-        
-        LoadingIndicator.hide();
     } catch (error) {
+        console.error('예약 저장 실패:', error);
+        ToastNotification.show(`예약 저장 실패: ${error.message}`, 'error');
+    } finally {
         LoadingIndicator.hide();
-        console.error('예약 저장 중 오류:', error);
-        ToastNotification.show(`예약 저장에 실패했습니다: ${error.message}`, 'error');
     }
 }
 
@@ -1841,26 +1878,26 @@ async function openAppointmentModal(time = null, staffId = null, date = null) {
                 <div class="form-grid">
                     <div class="form-group">
                         <label for="pet-name-1">반려동물명</label>
-                        <input type="text" id="pet-name-1" class="form-control pet-name" required>
+                        <input type="text" id="pet-name-1" name="pet_name_1" class="form-control pet-name" required>
                     </div>
                     <div class="form-group">
                         <label for="pet-breed-1">품종</label>
-                        <input type="text" id="pet-breed-1" class="form-control pet-breed" required>
+                        <input type="text" id="pet-breed-1" name="pet_breed_1" class="form-control pet-breed" required>
                     </div>
                 </div>
                 <div class="form-grid">
                     <div class="form-group">
                         <label for="pet-weight-1">몸무게(kg)</label>
-                        <input type="number" id="pet-weight-1" class="form-control pet-weight" step="0.1" required>
+                        <input type="number" id="pet-weight-1" name="pet_weight_1" class="form-control pet-weight" step="0.1" required>
                     </div>
                     <div class="form-group">
                         <label for="pet-age-1">나이</label>
-                        <input type="number" id="pet-age-1" class="form-control pet-age">
+                        <input type="number" id="pet-age-1" name="pet_age_1" class="form-control pet-age">
                     </div>
                 </div>
                 <div class="form-group">
                     <label for="pet-memo-1">반려동물 메모</label>
-                    <textarea id="pet-memo-1" class="form-control pet-memo"></textarea>
+                    <textarea id="pet-memo-1" name="pet_memo_1" class="form-control pet-memo"></textarea>
                 </div>
             </div>
         `;
@@ -1898,14 +1935,13 @@ async function openAppointmentModal(time = null, staffId = null, date = null) {
         if (petNameInput) {
             petNameInput.addEventListener('input', debounce(async function() {
                 const searchTerm = petNameInput.value.trim();
-                if (searchTerm.length < 2) return;
+                if (searchTerm.length < 2) {
+                    searchResultsContainer.style.display = 'none';
+                    return;
+                }
                 
                 try {
-                    // 반려동물 이름으로 고객 검색
-                    const customerResponse = await API.getCustomers(1, 5, searchTerm);
-                    const customers = customerResponse.customers || [];
-                    
-                    // 반려동물 이름이 일치하는 고객 찾기
+                    // 로컬 고객 데이터 검색
                     const matchingCustomers = customers.filter(customer => 
                         customer.pets && customer.pets.some(pet => 
                             pet.name && pet.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -1953,9 +1989,76 @@ async function openAppointmentModal(time = null, staffId = null, date = null) {
                         } else {
                             searchResultsContainer.style.display = 'none';
                         }
+                    } else {
+                        // API를 통해 고객 검색 시도
+                        try {
+                            const response = await API.getCustomers(1, 5, searchTerm);
+                            const apiCustomers = response.customers || [];
+                            
+                            // 반려동물 이름이 일치하는 고객 찾기
+                            const apiMatchingCustomers = apiCustomers.filter(customer => 
+                                customer.pets && customer.pets.some(pet => 
+                                    pet.name && pet.name.toLowerCase().includes(searchTerm.toLowerCase())
+                                )
+                            );
+                            
+                            if (apiMatchingCustomers.length > 0) {
+                                // 로컬 메모리 데이터에 추가 (중복 방지)
+                                apiMatchingCustomers.forEach(customer => {
+                                    const existingCustomer = customers.find(c => c.id === customer.id);
+                                    if (!existingCustomer) {
+                                        customers.push(customer);
+                                    }
+                                });
+                                
+                                // 검색 결과 업데이트
+                                searchResultsContainer.innerHTML = '';
+                                
+                                apiMatchingCustomers.forEach(customer => {
+                                    const matchingPets = customer.pets.filter(pet => 
+                                        pet.name && pet.name.toLowerCase().includes(searchTerm.toLowerCase())
+                                    );
+                                    
+                                    matchingPets.forEach(pet => {
+                                        const resultItem = document.createElement('div');
+                                        resultItem.className = 'search-result-item';
+                                        resultItem.innerHTML = `
+                                            <div class="result-pet-name">${pet.name} (${pet.breed || '품종 미상'})</div>
+                                            <div class="result-customer-info">${customer.name} - ${customer.phone || ''}</div>
+                                        `;
+                                        
+                                        resultItem.addEventListener('click', () => {
+                                            // 반려동물 정보 입력
+                                            petNameInput.value = pet.name || '';
+                                            document.getElementById('pet-breed-1').value = pet.breed || '';
+                                            document.getElementById('pet-weight-1').value = pet.weight || '';
+                                            document.getElementById('pet-age-1').value = pet.age || '';
+                                            document.getElementById('pet-memo-1').value = pet.memo || '';
+                                            
+                                            // 고객 정보도 자동 입력
+                                            handleCustomerSearchResult(customer, guardianNameInput, guardianPhoneInput, searchResultsContainer);
+                                        });
+                                        
+                                        searchResultsContainer.appendChild(resultItem);
+                                    });
+                                });
+                                
+                                if (searchResultsContainer.childElementCount > 0) {
+                                    searchResultsContainer.style.display = 'block';
+                                } else {
+                                    searchResultsContainer.style.display = 'none';
+                                }
+                            } else {
+                                searchResultsContainer.style.display = 'none';
+                            }
+                        } catch (apiError) {
+                            console.warn('API 고객 검색 실패:', apiError);
+                            searchResultsContainer.style.display = 'none';
+                        }
                     }
                 } catch (error) {
                     console.error('반려동물 이름으로 고객 검색 중 오류:', error);
+                    searchResultsContainer.style.display = 'none';
                 }
             }, 300));
         }
@@ -2483,6 +2586,9 @@ function renderCustomersTable() {
                     <button class="btn btn-sm btn-secondary edit-customer" data-id="${customer.id}">
                         <i class="fas fa-edit"></i>
                     </button>
+                    <button class="btn btn-sm btn-danger delete-customer" data-id="${customer.id}">
+                        <i class="fas fa-trash"></i>
+                    </button>
                 </td>
             `;
             
@@ -2505,6 +2611,15 @@ function renderCustomersTable() {
                 const customerId = btn.dataset.id;
                 // 고객 수정 모달 열기
                 openCustomerModal(customerId, 'edit');
+            });
+        });
+        
+        // 고객 삭제 버튼 이벤트 추가
+        document.querySelectorAll('.delete-customer').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const customerId = btn.dataset.id;
+                deleteCustomer(customerId);
             });
         });
     } catch (error) {
@@ -2575,6 +2690,9 @@ function searchCustomers(searchTerm) {
                     <button class="btn btn-sm btn-secondary edit-customer" data-id="${customer.id}">
                         <i class="fas fa-edit"></i>
                     </button>
+                    <button class="btn btn-sm btn-danger delete-customer" data-id="${customer.id}">
+                        <i class="fas fa-trash"></i>
+                    </button>
                 </td>
             `;
             
@@ -2595,6 +2713,15 @@ function searchCustomers(searchTerm) {
                 e.stopPropagation();
                 const customerId = btn.dataset.id;
                 openCustomerModal(customerId, 'edit');
+            });
+        });
+        
+        // 고객 삭제 버튼 이벤트 추가
+        document.querySelectorAll('.delete-customer').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const customerId = btn.dataset.id;
+                deleteCustomer(customerId);
             });
         });
     } catch (error) {
@@ -3571,9 +3698,13 @@ function openCustomerModal(customerId = null, mode = 'add') {
                                         input.readOnly = true;
                                     });
                                     
-                                    // 삭제 버튼 숨기기
+                                    // 상세 보기 모드에서는 삭제 버튼 숨기기
                                     const removeBtn = container.querySelector('.remove-pet-btn');
                                     if (removeBtn) removeBtn.style.display = 'none';
+                                } else {
+                                    // 수정 모드에서는 삭제 버튼 표시
+                                    const removeBtn = container.querySelector('.remove-pet-btn');
+                                    if (removeBtn) removeBtn.style.display = 'block';
                                 }
                             }
                         });
@@ -3616,5 +3747,49 @@ function openCustomerModal(customerId = null, mode = 'add') {
     } catch (error) {
         console.error('고객 모달 열기 중 오류:', error);
         ToastNotification.show('고객 정보를 불러오는 중 오류가 발생했습니다.', 'error');
+    }
+}
+
+// 고객 삭제 함수
+async function deleteCustomer(customerId) {
+    try {
+        // 삭제 확인 대화상자 표시
+        const confirmed = await ConfirmDialog.show({
+            title: '고객 삭제',
+            message: '정말로 이 고객을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.',
+            confirmText: '삭제',
+            cancelText: '취소',
+            type: 'warning'
+        });
+        
+        if (!confirmed) return;
+        
+        LoadingIndicator.show('고객 정보를 삭제 중...');
+        
+        // API 호출 또는 로컬 스토리지에서 고객 삭제
+        try {
+            // API 호출 먼저 시도
+            await API.deleteCustomer(customerId);
+        } catch (apiError) {
+            console.warn('API 고객 삭제 실패, 로컬 데이터만 삭제:', apiError);
+            
+            // 로컬 스토리지에서 삭제
+            const localCustomers = JSON.parse(localStorage.getItem('customers') || '[]');
+            const updatedCustomers = localCustomers.filter(c => c.id !== customerId);
+            localStorage.setItem('customers', JSON.stringify(updatedCustomers));
+        }
+        
+        // 메모리 상의 고객 목록 업데이트
+        customers = customers.filter(c => c.id !== customerId);
+        
+        // 고객 목록 다시 렌더링
+        renderCustomersTable();
+        
+        LoadingIndicator.hide();
+        ToastNotification.show('고객 정보가 삭제되었습니다.', 'success');
+    } catch (error) {
+        LoadingIndicator.hide();
+        console.error('고객 삭제 중 오류:', error);
+        ToastNotification.show('고객 삭제 중 오류가 발생했습니다.', 'error');
     }
 }
