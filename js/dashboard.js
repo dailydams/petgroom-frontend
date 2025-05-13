@@ -7,7 +7,7 @@ let appointments = [];
 let customers = [];
 let staffMembers = [];
 let sales = [];
-let currentDate = new Date();
+let currentDate = new Date(); // 현재 날짜로 초기화
 let currentView = 'day'; // day, week, month
 let selectedStaffId = 'all';
 let isLoading = false;
@@ -36,6 +36,16 @@ const alimtalkTemplates = {
 // DOM이 로드된 후 실행
 document.addEventListener('DOMContentLoaded', async () => {
     try {
+        // 현재 날짜 확인 로그
+        console.log('초기 currentDate:', currentDate);
+        console.log('시스템 날짜:', new Date());
+        
+        // 날짜가 잘못 설정된 경우 현재 날짜로 재설정
+        if (Math.abs(currentDate.getFullYear() - new Date().getFullYear()) > 1) {
+            console.log('날짜가 잘못 설정되어 있습니다. 현재 시스템 날짜로 재설정합니다.');
+            currentDate = new Date();
+        }
+        
         // salesChart 변수 초기화
         window.salesChart = null;
         chartInitialized = false;
@@ -396,6 +406,24 @@ function initEventListeners() {
     
     // 설정 페이지 이벤트
     initSettingsEvents();
+    
+    // 캘린더 네비게이션 버튼 이벤트
+    const prevNavBtn = document.getElementById('prev-nav');
+    const nextNavBtn = document.getElementById('next-nav');
+    const todayBtn = document.getElementById('today-btn');
+    
+    if (prevNavBtn) {
+        prevNavBtn.addEventListener('click', () => navigateCalendar(-1));
+    }
+    
+    if (nextNavBtn) {
+        nextNavBtn.addEventListener('click', () => navigateCalendar(1));
+    }
+    
+    if (todayBtn) {
+        todayBtn.addEventListener('click', navigateToToday);
+        console.log('오늘 버튼 이벤트 리스너 등록 완료');
+    }
     
     // 모달 닫기 버튼
     document.querySelectorAll('.close').forEach(closeBtn => {
@@ -774,12 +802,15 @@ function initCalendarView() {
 // 달력 헤더 날짜 업데이트
 function updateCalendarHeader() {
     try {
+        console.log('updateCalendarHeader - 현재 날짜:', currentDate);
+        
         let options;
         
         // 뷰에 따라 표시 형식 변경
         if (currentView === 'day') {
             options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' };
             document.getElementById('current-date').textContent = currentDate.toLocaleDateString('ko-KR', options);
+            console.log('일간 뷰 날짜 설정:', document.getElementById('current-date').textContent);
         } else if (currentView === 'week') {
             // 주간 뷰는 시작일과 종료일을 표시
             const weekStart = new Date(currentDate);
@@ -795,14 +826,20 @@ function updateCalendarHeader() {
             const endStr = weekEnd.toLocaleDateString('ko-KR', endOptions);
             
             document.getElementById('current-date').textContent = `${startStr} - ${endStr}`;
+            console.log('주간 뷰 날짜 설정:', document.getElementById('current-date').textContent);
         } else if (currentView === 'month') {
             // 월간 뷰는 연월만 표시
             options = { year: 'numeric', month: 'long' };
             document.getElementById('current-date').textContent = currentDate.toLocaleDateString('ko-KR', options);
+            console.log('월간 뷰 날짜 설정:', document.getElementById('current-date').textContent);
         }
-                // 예약 폼의 기본 날짜를 현재 선택된 날짜로 설정
+        
+        // 예약 폼의 기본 날짜를 현재 선택된 날짜로 설정
         const dateInput = document.getElementById('appointment-date');
-        dateInput.value = formatDate(currentDate);
+        if (dateInput) {
+            dateInput.value = formatDate(currentDate);
+            console.log('예약 폼 날짜 설정:', dateInput.value);
+        }
     } catch (error) {
         console.error('달력 헤더 업데이트 중 오류:', error);
     }
@@ -810,15 +847,26 @@ function updateCalendarHeader() {
 
 // 날짜 포맷 변환 (YYYY-MM-DD)
 function formatDate(date) {
-    const d = new Date(date);
-    let month = '' + (d.getMonth() + 1);
-    let day = '' + d.getDate();
-    const year = d.getFullYear();
+    try {
+        if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+            console.error('유효하지 않은 날짜:', date);
+            return formatDate(new Date()); // 현재 날짜로 대체
+        }
+        
+        const d = new Date(date);
+        let month = '' + (d.getMonth() + 1);
+        let day = '' + d.getDate();
+        const year = d.getFullYear();
 
-    if (month.length < 2) month = '0' + month;
-    if (day.length < 2) day = '0' + day;
+        if (month.length < 2) month = '0' + month;
+        if (day.length < 2) day = '0' + day;
 
-    return [year, month, day].join('-');
+        const formatted = [year, month, day].join('-');
+        return formatted;
+    } catch (error) {
+        console.error('날짜 포맷 변환 중 오류:', error);
+        return formatDate(new Date()); // 오류 발생 시 현재 날짜로 대체
+    }
 }
 
 // 캘린더 네비게이션 함수
@@ -850,9 +898,15 @@ async function navigateToToday() {
     try {
         if (isLoading) return; // 로딩 중이면 이벤트 무시
         
+        console.log('오늘 날짜로 이동 시작');
+        // 현재 시스템 날짜로 설정
         currentDate = new Date();
+        console.log('현재 날짜로 재설정:', currentDate);
+        
         updateCalendarHeader();
         await loadCalendar();
+        
+        console.log('오늘 날짜로 이동 완료');
     } catch (error) {
         console.error('오늘 날짜로 이동 중 오류:', error);
         ToastNotification.show('오늘 날짜로 이동 중 오류가 발생했습니다.', 'error');
@@ -864,6 +918,9 @@ async function loadCalendar() {
     try {
         if (isLoading) return;
         isLoading = true;
+        
+        console.log('캘린더 로드 시작 - 현재 날짜:', currentDate);
+        console.log('포맷된 날짜:', formatDate(currentDate));
         
         // 로딩 표시 (빠른 로딩을 위해 짧게 표시)
         const loadingTimeout = setTimeout(() => {
@@ -893,6 +950,8 @@ async function loadCalendar() {
         clearTimeout(loadingTimeout);
         LoadingIndicator.hide();
         isLoading = false;
+        
+        console.log('캘린더 로드 완료');
     } catch (error) {
         LoadingIndicator.hide();
         isLoading = false;
