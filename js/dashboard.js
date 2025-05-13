@@ -26,12 +26,22 @@ const periodLabels = {
     'year': '최근 12개월 월별 매출'
 };
 
-// 알림톡 템플릿
-const alimtalkTemplates = {
-    'reservation': '안녕하세요, {{매장명}}입니다.\n{{보호자명}} 고객님, {{예약날짜}}에 {{반려동물명}}의 {{서비스명}} 예약이 완료되었습니다.\n문의사항은 {{매장번호}}로 연락주세요.',
-    'reminder': '안녕하세요, {{매장명}}입니다.\n{{보호자명}} 고객님, 내일 {{예약날짜}}에 {{반려동물명}}의 {{서비스명}} 예약이 있습니다.\n변경이나 취소는 {{매장번호}}로 연락주세요.',
-    'completed': '안녕하세요, {{매장명}}입니다.\n{{보호자명}} 고객님, {{반려동물명}}의 {{서비스명}}이 완료되었습니다.\n다음 방문도 함께 하겠습니다.\n문의사항은 {{매장번호}}로 연락주세요.'
+// 기본 알림톡 템플릿 정의
+let alimtalkTemplates = {
+    reservation: '안녕하세요, {{매장명}}입니다.\n{{보호자명}} 고객님, {{예약날짜}}에 {{반려동물명}}의 미용 예약이 완료되었습니다.\n문의사항은 {{매장번호}}로 연락주세요.',
+    reminder: '안녕하세요, {{매장명}}입니다.\n{{보호자명}} 고객님, 내일 {{예약날짜}}에 {{반려동물명}}의 미용 예약이 있습니다.\n변경사항이 있으시면 {{매장번호}}로 연락주세요.',
+    completed: '안녕하세요, {{매장명}}입니다.\n{{보호자명}} 고객님, {{반려동물명}}의 미용이 완료되었습니다.\n이용해 주셔서 감사합니다.'
 };
+
+// 로컬 스토리지에서 알림톡 템플릿 로드
+try {
+    const savedTemplates = localStorage.getItem('alimtalkTemplates');
+    if (savedTemplates) {
+        alimtalkTemplates = JSON.parse(savedTemplates);
+    }
+} catch (error) {
+    console.error('알림톡 템플릿 로드 중 오류:', error);
+}
 
 // DOM이 로드된 후 실행
 document.addEventListener('DOMContentLoaded', async () => {
@@ -3078,3 +3088,139 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // ... existing code ...
 });
+
+// 알림톡 편집 모달 열기
+function openAlimtalkEditModal() {
+    try {
+        const modal = document.getElementById('alimtalk-edit-modal');
+        if (!modal) {
+            console.error('알림톡 편집 모달을 찾을 수 없습니다.');
+            ToastNotification.show('알림톡 편집 모달을 찾을 수 없습니다.', 'error');
+            return;
+        }
+        
+        // 현재 선택된 알림톡 템플릿 가져오기
+        const selectedOption = document.querySelector('input[name="alimtalk-option"]:checked').value;
+        
+        // 선택된 옵션이 없거나 'none'인 경우 처리
+        if (!selectedOption || selectedOption === 'none') {
+            ToastNotification.show('먼저 알림톡 옵션을 선택해주세요.', 'warning');
+            return;
+        }
+        
+        // 현재 템플릿 내용 가져오기
+        let templateContent = '';
+        if (selectedOption === 'default') {
+            templateContent = alimtalkTemplates.reservation;
+        } else if (selectedOption === 'reminder') {
+            templateContent = alimtalkTemplates.reminder;
+        } else if (selectedOption === 'completed') {
+            templateContent = alimtalkTemplates.completed;
+        } else {
+            templateContent = '안녕하세요, {{매장명}}입니다.\n{{보호자명}} 고객님, {{예약날짜}}에 {{반려동물명}}의 {{서비스명}} 예약이 완료되었습니다.\n문의사항은 {{매장번호}}로 연락주세요.';
+        }
+        
+        // 템플릿 내용을 모달에 설정
+        const templateTextarea = document.getElementById('alimtalk-template-text');
+        if (templateTextarea) {
+            templateTextarea.value = templateContent;
+        }
+        
+        // 사용 가능한 변수 안내 업데이트
+        updateAvailableVariables();
+        
+        // 모달 표시
+        modal.style.display = 'block';
+    } catch (error) {
+        console.error('알림톡 편집 모달 열기 중 오류:', error);
+        ToastNotification.show('알림톡 편집 모달을 여는 중 오류가 발생했습니다.', 'error');
+    }
+}
+
+// 사용 가능한 변수 목록 업데이트
+function updateAvailableVariables() {
+    const variablesContainer = document.getElementById('alimtalk-variables');
+    if (!variablesContainer) return;
+    
+    // 사용 가능한 변수 목록
+    const variables = [
+        { name: '{{매장명}}', description: '미용실 이름' },
+        { name: '{{매장번호}}', description: '미용실 전화번호' },
+        { name: '{{보호자명}}', description: '고객 이름' },
+        { name: '{{예약날짜}}', description: '예약 날짜와 시간' },
+        { name: '{{반려동물명}}', description: '반려동물 이름' },
+        { name: '{{서비스명}}', description: '예약한 서비스' }
+    ];
+    
+    // 변수 목록 렌더링
+    variablesContainer.innerHTML = '';
+    variables.forEach(variable => {
+        const variableElement = document.createElement('div');
+        variableElement.className = 'alimtalk-variable';
+        variableElement.innerHTML = `
+            <span class="variable-name">${variable.name}</span>
+            <span class="variable-description">${variable.description}</span>
+        `;
+        
+        // 변수 클릭 시 템플릿에 추가
+        variableElement.addEventListener('click', () => {
+            const templateTextarea = document.getElementById('alimtalk-template-text');
+            if (templateTextarea) {
+                const currentPosition = templateTextarea.selectionStart;
+                const currentContent = templateTextarea.value;
+                
+                // 현재 커서 위치에 변수 삽입
+                const newContent = 
+                    currentContent.substring(0, currentPosition) + 
+                    variable.name + 
+                    currentContent.substring(currentPosition);
+                
+                templateTextarea.value = newContent;
+                
+                // 커서 위치 업데이트
+                const newPosition = currentPosition + variable.name.length;
+                templateTextarea.setSelectionRange(newPosition, newPosition);
+                templateTextarea.focus();
+            }
+        });
+        
+        variablesContainer.appendChild(variableElement);
+    });
+}
+
+// 알림톡 템플릿 저장
+function saveAlimtalkTemplate() {
+    try {
+        const selectedOption = document.querySelector('input[name="alimtalk-option"]:checked').value;
+        const templateText = document.getElementById('alimtalk-template-text').value;
+        
+        // 템플릿이 비어있는지 확인
+        if (!templateText.trim()) {
+            ToastNotification.show('템플릿 내용을 입력해주세요.', 'error');
+            return;
+        }
+        
+        // 템플릿 저장
+        if (selectedOption === 'default') {
+            alimtalkTemplates.reservation = templateText;
+        } else if (selectedOption === 'reminder') {
+            alimtalkTemplates.reminder = templateText;
+        } else if (selectedOption === 'completed') {
+            alimtalkTemplates.completed = templateText;
+        }
+        
+        // 로컬 스토리지에 템플릿 저장
+        localStorage.setItem('alimtalkTemplates', JSON.stringify(alimtalkTemplates));
+        
+        // 미리보기 업데이트
+        updateAlimtalkPreviews();
+        
+        // 모달 닫기
+        document.getElementById('alimtalk-edit-modal').style.display = 'none';
+        
+        ToastNotification.show('알림톡 템플릿이 저장되었습니다.', 'success');
+    } catch (error) {
+        console.error('알림톡 템플릿 저장 중 오류:', error);
+        ToastNotification.show('알림톡 템플릿 저장 중 오류가 발생했습니다.', 'error');
+    }
+}
