@@ -3487,13 +3487,23 @@ function saveCustomerFromForm() {
         // 반려동물 정보 수집
         const petContainers = document.querySelectorAll('#customer-pet-containers .pet-container');
         const pets = Array.from(petContainers).map((container, index) => {
+            // 인덱스 번호를 사용하여 ID 생성 (1부터 시작)
+            const petIndex = index + 1;
+            
+            // 명확한 ID로 요소 찾기
+            const petName = document.getElementById(`customer-pet-name-${petIndex}`)?.value || '';
+            const petBreed = document.getElementById(`customer-pet-breed-${petIndex}`)?.value || '';
+            const petWeight = parseFloat(document.getElementById(`customer-pet-weight-${petIndex}`)?.value) || 0;
+            const petAge = parseInt(document.getElementById(`customer-pet-age-${petIndex}`)?.value) || null;
+            const petMemo = document.getElementById(`customer-pet-memo-${petIndex}`)?.value || '';
+            
             return {
                 id: Date.now().toString() + index,
-                name: container.querySelector('[name^="pet_name"]').value,
-                breed: container.querySelector('[name^="pet_breed"]').value,
-                weight: parseFloat(container.querySelector('[name^="pet_weight"]').value) || 0,
-                age: parseInt(container.querySelector('[name^="pet_age"]').value) || null,
-                memo: container.querySelector('[name^="pet_memo"]').value || ''
+                name: petName,
+                breed: petBreed,
+                weight: petWeight,
+                age: petAge,
+                memo: petMemo
             };
         });
         
