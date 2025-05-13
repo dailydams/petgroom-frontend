@@ -81,6 +81,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                     
                     // 토큰을 세션 스토리지에 명시적으로 저장
                     sessionStorage.setItem('token', response.token);
+                    console.log('세션 스토리지에 토큰 저장:', response.token);
                     
                     // 만료 시간 저장
                     const expiresAt = new Date().getTime() + ((response.expiresIn || 3600) * 1000);
@@ -103,9 +104,12 @@ document.addEventListener('DOMContentLoaded', async function() {
                     console.log('토큰:', sessionStorage.getItem('token'));
                     console.log('사용자 정보:', sessionStorage.getItem('currentUser'));
                     
-                    // 대시보드로 리디렉션
-                    console.log('대시보드로 이동합니다.');
-                    window.location.href = 'dashboard.html';
+                    // 대시보드로 리디렉션 전 잠시 대기 (세션 스토리지 저장 완료를 위해)
+                    setTimeout(() => {
+                        // 대시보드로 리디렉션
+                        console.log('대시보드로 이동합니다.');
+                        window.location.href = 'dashboard.html';
+                    }, 500);
                 } catch (error) {
                     LoadingIndicator.hide();
                     console.error('로그인 오류:', error);
