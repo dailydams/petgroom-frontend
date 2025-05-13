@@ -420,14 +420,7 @@ function initEventListeners() {
         document.getElementById('sale-modal').style.display = 'none';
     });
     
-    // 예약 폼 제출 이벤트
-    const appointmentForm = document.getElementById('appointment-form');
-    if (appointmentForm) {
-        appointmentForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            await saveAppointmentFromForm(this);
-        });
-    }
+    // 예약 폼 제출 이벤트는 initAppointmentEvents에서 처리하므로 중복 등록 제거
     
     // 고객 폼 제출 이벤트
     const customerForm = document.getElementById('customer-form');
@@ -447,36 +440,10 @@ function initAppointmentEvents() {
         appointmentForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             try {
-                const formData = new FormData(appointmentForm);
-                const appointmentData = Object.fromEntries(formData.entries());
-                
-                // 서비스 선택 처리
-                const selectedServices = Array.from(document.querySelectorAll('.service-btn.active'))
-                    .map(btn => btn.dataset.service);
-                appointmentData.services = selectedServices;
-                
-                // 반려동물 정보 처리
-                const pets = Array.from(document.querySelectorAll('.pet-container')).map(container => {
-                    const nameElement = container.querySelector('[name^="pet_name"]');
-                    const breedElement = container.querySelector('[name^="pet_breed"]');
-                    const ageElement = container.querySelector('[name^="pet_age"]');
-                    const weightElement = container.querySelector('[name^="pet_weight"]');
-                    
-                    return {
-                        name: nameElement ? nameElement.value : '',
-                        breed: breedElement ? breedElement.value : '',
-                        age: ageElement ? ageElement.value : '',
-                        weight: weightElement ? weightElement.value : ''
-                    };
-                });
-                appointmentData.pets = pets;
-                
-                await API.saveAppointment(appointmentData);
-                ToastNotification.show('예약이 저장되었습니다.', 'success');
-                closeModal('appointment-modal');
-                await loadCalendar();
+                // 기존 API 직접 호출 대신 saveAppointmentFromForm 함수 호출
+                await saveAppointmentFromForm(appointmentForm);
             } catch (error) {
-                console.error('예약 저장 실패:', error);
+                console.error('예약 폼 제출 중 오류:', error);
                 ToastNotification.show('예약 저장에 실패했습니다.', 'error');
             }
         });
@@ -1065,12 +1032,22 @@ async function saveAppointmentFromForm(form) {
         const appointmentMemo = form.querySelector('#appointment-memo').value;
         
         // 알림톡 정보
-        const alimtalkOption = form.querySelector('input[name="alimtalk-option"]:checked').value;
+        const alimtalkOption = form.querySelector('input[name="alimtalk-option"]:checked')?.value || 'none';
         
         // 동의서 정보
-        const defaultAgreement = form.querySelector('#agreement-default').checked;
-        const seniorAgreement = form.querySelector('#agreement-senior').checked;
+        const defaultAgreement = form.querySelector('#agreement-default')?.checked || false;
+        const seniorAgreement = form.querySelector('#agreement-senior')?.checked || false;
         
+        // 필수 필드 검증
+        if (!appointmentDate) throw new Error('예약 날짜를 입력해주세요');
+        if (!startTime) throw new Error('시작 시간을 입력해주세요');
+        if (!endTime) throw new Error('종료 시간을 입력해주세요');
+        if (!guardianName) throw new Error('보호자명을 입력해주세요');
+        if (!guardianPhone) throw new Error('연락처를 입력해주세요');
+        if (!staffId) throw new Error('담당자를 선택해주세요');
+        if (!serviceName) throw new Error('서비스를 선택해주세요');
+        if (pets.length === 0 || !pets[0].name || !pets[0].breed) throw new Error('반려동물 정보를 입력해주세요');
+
         // 예약 데이터 구성 - API 형식에 맞게 수정
         const appointmentData = {
             date: appointmentDate,
@@ -1102,14 +1079,16 @@ async function saveAppointmentFromForm(form) {
             appointmentData.id = appointmentId;
         }
         
-        console.log('예약 저장 데이터:', appointmentData);
+        console.log('예약 저장 데이터:', JSON.stringify(appointmentData, null, 2));
         
         // API 호출
         try {
             // 예약 API 호출
             const response = await API.saveAppointment(appointmentData);
+            console.log('API 응답:', response);
             
-            if (response.success) {
+            if (response && (response.success || response.id)) {
+                console.log('예약 저장 성공');
                 ToastNotification.show('예약이 성공적으로 저장되었습니다.', 'success');
                 
                 // 예약 모달 닫기
@@ -1120,10 +1099,11 @@ async function saveAppointmentFromForm(form) {
                 
                 // 상태가 alimtalk 발송이면 알림톡 전송
                 if (alimtalkOption !== 'none' && alimtalkConsent) {
-                    sendAppointmentAlimtalk(appointmentData, response.appointment?.id);
+                    sendAppointmentAlimtalk(appointmentData, response.appointment?.id || response.id);
                 }
             } else {
-                throw new Error(response.message || '예약 저장에 실패했습니다.');
+                // 성공 응답이 아닌 경우
+                throw new Error(response.message || response.error || '예약 저장에 실패했습니다.');
             }
         } catch (apiError) {
             console.error('API 예약 저장 실패:', apiError);
@@ -1131,15 +1111,27 @@ async function saveAppointmentFromForm(form) {
             // API 오류 시 백업으로 로컬 저장
             const appointment = {
                 ...appointmentData,
-                id: Date.now().toString(), // 로컬 아이디 생성
+                id: appointmentId || Date.now().toString(), // 기존 ID 유지 또는 새 ID 생성
             };
             
             // 로컬 저장소에 저장
             const savedAppointments = JSON.parse(localStorage.getItem('appointments') || '[]');
-            savedAppointments.push(appointment);
+            
+            // 기존 예약 수정인 경우 업데이트, 아니면 추가
+            if (appointmentId) {
+                const index = savedAppointments.findIndex(app => app.id === appointmentId);
+                if (index >= 0) {
+                    savedAppointments[index] = appointment;
+                } else {
+                    savedAppointments.push(appointment);
+                }
+            } else {
+                savedAppointments.push(appointment);
+            }
+            
             localStorage.setItem('appointments', JSON.stringify(savedAppointments));
             
-            ToastNotification.show('서버 저장 실패로 로컬에 예약 정보가 저장되었습니다.', 'warning');
+            ToastNotification.show('서버 저장 실패로 로컬에 예약 정보가 저장되었습니다. ' + apiError.message, 'warning');
             
             // 예약 모달 닫기
             document.getElementById('appointment-modal').style.display = 'none';
