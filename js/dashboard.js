@@ -661,6 +661,14 @@ function initCustomerEvents() {
         }
     });
     
+    // 엑셀 양식 다운로드 버튼 이벤트
+    const downloadTemplateBtn = document.getElementById('download-template-btn');
+    if (downloadTemplateBtn) {
+        downloadTemplateBtn.addEventListener('click', () => {
+            downloadExcelTemplate();
+        });
+    }
+    
     // 엑셀 일괄등록 버튼 이벤트
     const importCustomersBtn = document.getElementById('import-customers-btn');
     if (importCustomersBtn) {
@@ -1790,7 +1798,52 @@ async function openAppointmentModal(time = null, staffId = null, date = null) {
             guardianNameInput.parentNode.appendChild(searchResultsContainer);
         }
         
-        // 보호자 이름 입력 시 검색
+        // 반려동물명 입력 시 검색 기능 추가
+        const petNameInput = document.getElementById('pet-name-1');
+        if (petNameInput) {
+            petNameInput.addEventListener('input', debounce(async function() {
+                const searchTerm = petNameInput.value.trim();
+                if (searchTerm.length < 2) return;
+                
+                try {
+                    // 반려동물 이름으로 고객 검색
+                    const customerResponse = await API.getCustomers(1, 5, searchTerm);
+                    const customers = customerResponse.customers || [];
+                    
+                    // 반려동물 이름이 일치하는 고객 찾기
+                    const matchingCustomers = customers.filter(customer => 
+                        customer.pets && customer.pets.some(pet => 
+                            pet.name && pet.name.toLowerCase().includes(searchTerm.toLowerCase())
+                        )
+                    );
+                    
+                    if (matchingCustomers.length === 1) {
+                        const customer = matchingCustomers[0];
+                        // 고객 정보 자동 입력
+                        guardianNameInput.value = customer.name || '';
+                        guardianPhoneInput.value = customer.phone || '';
+                        
+                        // 일치하는 반려동물 찾기
+                        const matchingPet = customer.pets.find(pet => 
+                            pet.name.toLowerCase().includes(searchTerm.toLowerCase())
+                        );
+                        
+                        if (matchingPet) {
+                            // 반려동물 정보 자동 입력
+                            petNameInput.value = matchingPet.name || '';
+                            document.getElementById('pet-breed-1').value = matchingPet.breed || '';
+                            document.getElementById('pet-weight-1').value = matchingPet.weight || '';
+                            document.getElementById('pet-age-1').value = matchingPet.age || '';
+                            document.getElementById('pet-memo-1').value = matchingPet.memo || '';
+                        }
+                    }
+                } catch (error) {
+                    console.error('반려동물 이름으로 고객 검색 중 오류:', error);
+                }
+            }, 500));
+        }
+        
+        // 보호자 이름 입력 시 검색 (기존 코드 유지)
         guardianNameInput.addEventListener('input', debounce(async function() {
             const searchTerm = guardianNameInput.value.trim();
             if (searchTerm.length < 2) {
@@ -3561,5 +3614,42 @@ function saveCustomerFromForm() {
     } catch (error) {
         console.error('고객 저장 중 오류:', error);
         ToastNotification.show('고객 정보 저장 중 오류가 발생했습니다.', 'error');
+    }
+}
+
+// 엑셀 양식 다운로드 함수
+function downloadExcelTemplate() {
+    try {
+        // CSV 데이터 생성
+        const headers = ['이름', '전화번호', '반려동물명', '품종', '몸무게(kg)', '나이', '반려동물 메모', '보호자 메모', '알림톡 수신동의'];
+        const sampleData = [
+            ['김고객', '010-1234-5678', '쿠키', '말티즈', '3.5', '4', '털이 긴 편입니다', '첫 방문시 긴장함', 'O'],
+            ['이고객', '010-8765-4321', '몽이', '푸들', '4.2', '3', '귀 청소 필요', '예민함', 'X'],
+            ['박고객', '010-5555-6666', '초코', '비숑', '2.8', '2', '발톱이 검은색', '', 'O']
+        ];
+        
+        // 행 생성
+        let csv = headers.join(',') + '\n';
+        
+        // 샘플 데이터 행 추가
+        sampleData.forEach(row => {
+            csv += row.join(',') + '\n';
+        });
+        
+        // 파일 다운로드
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', '고객정보_양식.csv');
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        ToastNotification.show('고객정보 엑셀 양식이 다운로드되었습니다.', 'success');
+    } catch (error) {
+        console.error('엑셀 양식 다운로드 중 오류:', error);
+        ToastNotification.show('엑셀 양식 다운로드 중 오류가 발생했습니다.', 'error');
     }
 }
