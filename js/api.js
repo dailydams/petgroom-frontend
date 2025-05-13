@@ -18,11 +18,16 @@ const API_CONFIG = {
       // 만료 시간 저장 (현재 시간 + expiresIn초)
       const expiresAt = new Date().getTime() + (expiresIn * 1000);
       sessionStorage.setItem('tokenExpires', expiresAt);
+      
+      console.log('토큰 저장 완료:', { token, expiresAt: new Date(expiresAt).toISOString() });
     },
     
     removeToken() {
+      console.log('토큰 삭제 전:', { token: sessionStorage.getItem('token') });
       sessionStorage.removeItem('token');
       sessionStorage.removeItem('tokenExpires');
+      sessionStorage.removeItem('currentUser');
+      console.log('토큰 삭제 후:', { token: sessionStorage.getItem('token') });
     },
     
     isTokenExpired() {
@@ -85,8 +90,8 @@ const API_CONFIG = {
       'Cache-Control': 'no-cache'
     };
     
-    // 세션 스토리지에서 직접 토큰 가져오기
-    const token = sessionStorage.getItem('token') || TokenService.getToken();
+    // TokenService를 통해 토큰 가져오기
+    const token = TokenService.getToken();
     
     if (token) {
       console.log('API 요청에 토큰 추가:', token);
@@ -108,7 +113,7 @@ const API_CONFIG = {
       
       // 토큰 확인 (인증이 필요한 API인 경우)
       const needsAuth = endpoint !== '/api/auth/login' && endpoint !== '/api/auth/register' && !endpoint.includes('/api/init-admin');
-      const token = sessionStorage.getItem('token') || TokenService.getToken();
+      const token = TokenService.getToken();
       
       // 로그인 요청이 아닌 경우에만 토큰 체크 및 가짜 응답 생성
       if (needsAuth && !token && endpoint !== '/api/auth/login') {
@@ -137,7 +142,7 @@ const API_CONFIG = {
       const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
       
       try {
-        console.log(`API 요청: ${endpoint}`, data); // 디버깅용 로그 추가
+        console.log(`API 요청: ${endpoint}`, { method, token: token ? 'exists' : 'none' }); // 디버깅용 로그 추가
         
         // 서버와 통신
         const response = await fetch(`${API_CONFIG.BASE_URL}${endpoint}`, options);
@@ -147,7 +152,7 @@ const API_CONFIG = {
         let result;
         try {
           result = await response.json();
-          console.log(`API 응답: ${endpoint}`, result); // 디버깅용 로그 추가
+          console.log(`API 응답: ${endpoint}`, { status: response.status, success: result.success });
         } catch (jsonError) {
           console.warn('API 응답 파싱 오류:', jsonError);
           
@@ -162,10 +167,13 @@ const API_CONFIG = {
         // API 에러 처리
         if (response.status === 401) {
           // 토큰이 만료되었거나 유효하지 않은 경우
+          console.log('401 인증 오류 발생, 토큰 삭제');
           TokenService.removeToken();
           
-          // 로그인 페이지로 리디렉션하지 않고 오류만 반환
+          // 로그인 페이지로 리디렉션
           if (endpoint !== '/api/auth/login') {
+            console.log('인증 오류로 로그인 페이지로 리디렉션');
+            window.location.href = 'index.html';
             throw new Error('로그인이 필요합니다.');
           }
         }
@@ -194,7 +202,8 @@ const API_CONFIG = {
           
           // 가짜 토큰 저장
           TokenService.saveToken(fakeResponse.token, fakeResponse.expiresIn);
-          sessionStorage.setItem('token', fakeResponse.token);
+          
+          // 사용자 정보 저장
           sessionStorage.setItem('currentUser', JSON.stringify(fakeResponse.user));
           
           return fakeResponse;
@@ -308,19 +317,12 @@ const API_CONFIG = {
     try {
       const response = await apiRequest('/api/auth/login', 'POST', { email, password });
       
-      console.log('로그인 응답:', response); // 디버깅용 로그 추가
+      console.log('로그인 응답:', { success: response.success, hasToken: !!response.token });
       
       // 토큰 저장
       if (response.token) {
-        console.log('서버에서 받은 토큰 저장:', response.token);
+        console.log('서버에서 받은 토큰 저장');
         TokenService.saveToken(response.token, response.expiresIn || 3600);
-        
-        // 세션 스토리지에 직접 저장
-        sessionStorage.setItem('token', response.token);
-        
-        // 만료 시간 저장
-        const expiresAt = new Date().getTime() + ((response.expiresIn || 3600) * 1000);
-        sessionStorage.setItem('tokenExpires', expiresAt);
         
         // 사용자 정보가 없는 경우 기본값 설정
         if (!response.user) {
@@ -334,7 +336,7 @@ const API_CONFIG = {
         
         // 세션 스토리지에 사용자 정보 저장
         sessionStorage.setItem('currentUser', JSON.stringify(response.user));
-        console.log('세션 스토리지에 사용자 정보 저장:', response.user);
+        console.log('세션 스토리지에 사용자 정보 저장 완료');
       } else {
         console.error('서버에서 토큰을 받지 못했습니다:', response);
         throw new Error('로그인에 실패했습니다. 서버에서 토큰을 받지 못했습니다.');
@@ -371,8 +373,9 @@ const API_CONFIG = {
   
   // 로그아웃
   function logout() {
+    console.log('로그아웃 실행');
     TokenService.removeToken();
-    sessionStorage.removeItem('currentUser');
+    console.log('로그아웃 후 토큰 상태:', { token: sessionStorage.getItem('token') });
     
     // 로그인 페이지로 리디렉션
     window.location.href = 'index.html';
