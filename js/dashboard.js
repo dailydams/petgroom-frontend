@@ -3268,21 +3268,21 @@ function addCustomerPetForm() {
             <div class="form-grid">
                 <div class="form-group">
                     <label for="customer-pet-name-${petCount}">반려동물명</label>
-                    <input type="text" id="customer-pet-name-${petCount}" class="form-control pet-name" required>
+                    <input type="text" id="customer-pet-name-${petCount}" name="customer_pet_name_${petCount}" class="form-control pet-name" required>
                 </div>
                 <div class="form-group">
                     <label for="customer-pet-breed-${petCount}">품종</label>
-                    <input type="text" id="customer-pet-breed-${petCount}" class="form-control pet-breed" required>
+                    <input type="text" id="customer-pet-breed-${petCount}" name="customer_pet_breed_${petCount}" class="form-control pet-breed" required>
                 </div>
             </div>
             <div class="form-grid">
                 <div class="form-group">
                     <label for="customer-pet-weight-${petCount}">몸무게(kg)</label>
-                    <input type="number" id="customer-pet-weight-${petCount}" class="form-control pet-weight" step="0.1" required>
+                    <input type="number" id="customer-pet-weight-${petCount}" name="customer_pet_weight_${petCount}" class="form-control pet-weight" step="0.1" required>
                 </div>
                 <div class="form-group">
                     <label for="customer-pet-age-${petCount}">나이</label>
-                    <input type="number" id="customer-pet-age-${petCount}" class="form-control pet-age">
+                    <input type="number" id="customer-pet-age-${petCount}" name="customer_pet_age_${petCount}" class="form-control pet-age">
                 </div>
             </div>
             <div class="form-group">
@@ -3517,10 +3517,15 @@ function openCustomerModal(customerId = null, mode = 'add') {
             if (customer) {
                 console.log('고객 정보 찾음:', customer);
                 // 고객 기본 정보 설정
-                document.getElementById('customer-id').value = customer.id;
-                document.getElementById('customer-name').value = customer.name || '';
-                document.getElementById('customer-phone').value = customer.phone || '';
-                document.getElementById('customer-memo').value = customer.memo || '';
+                const customerIdInput = document.getElementById('customer-id');
+                const customerNameInput = document.getElementById('customer-name');
+                const customerPhoneInput = document.getElementById('customer-phone');
+                const customerMemoInput = document.getElementById('customer-memo');
+                
+                if (customerIdInput) customerIdInput.value = customer.id;
+                if (customerNameInput) customerNameInput.value = customer.name || '';
+                if (customerPhoneInput) customerPhoneInput.value = customer.phone || '';
+                if (customerMemoInput) customerMemoInput.value = customer.memo || '';
                 
                 // 알림톡 수신 동의 체크 상태 설정
                 const alimtalkConsent = document.getElementById('customer-alimtalk-consent');
@@ -3596,7 +3601,8 @@ function openCustomerModal(customerId = null, mode = 'add') {
             }
         } else {
             // 신규 고객인 경우 ID 필드 비우기
-            document.getElementById('customer-id').value = '';
+            const customerIdInput = document.getElementById('customer-id');
+            if (customerIdInput) customerIdInput.value = '';
             
             // 기본 반려동물 폼 하나 추가
             const petContainers = document.getElementById('customer-pet-containers');
