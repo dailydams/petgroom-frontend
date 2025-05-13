@@ -2652,7 +2652,14 @@ header {
     color: var(--text-primary);
 }
 
-/* 통계 아이콘 추가 */
+.appointment-stats-dashboard .stat-value.positive {
+    color: var(--success);
+}
+
+.appointment-stats-dashboard .stat-value.negative {
+    color: var(--danger);
+}
+
 .appointment-stats-dashboard .stat-item::after {
     font-family: "Font Awesome 5 Free";
     font-weight: 900;
@@ -2739,5 +2746,131 @@ header {
     
     .appointment-stats-dashboard .stat-item::after {
         display: none;
+    }
+}
+
+/* 모바일 최적화를 위한 미디어 쿼리 */
+@media (max-width: 768px) {
+    /* 전체 레이아웃 */
+    .wrapper.mobile-view {
+        grid-template-columns: 60px 1fr;
+    }
+    
+    .wrapper.sidebar-mobile-open {
+        grid-template-columns: 240px 1fr;
+    }
+    
+    /* 헤더 최적화 */
+    header {
+        padding: 10px;
+    }
+    
+    .header-title h1 {
+        font-size: 1.2rem;
+    }
+    
+    .date-display {
+        display: none;
+    }
+    
+    /* 사이드바 최적화 */
+    .sidebar .menu-text {
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+    
+    .wrapper.sidebar-mobile-open .sidebar .menu-text {
+        opacity: 1;
+    }
+    
+    /* 달력 최적화 */
+    .calendar-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    .calendar-header-left {
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    .view-selector {
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    .view-btn {
+        padding: 6px 12px;
+        font-size: 0.9rem;
+    }
+    
+    /* 월간 캘린더 최적화 */
+    #month-view .month-day {
+        height: 80px;
+        padding: 5px;
+    }
+    
+    .month-appointment {
+        padding: 2px 4px;
+        font-size: 0.7rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    /* 일간 캘린더 최적화 */
+    .staff-schedule {
+        overflow-x: auto;
+    }
+    
+    .time-slots {
+        min-width: 600px;
+    }
+    
+    /* 모달 최적화 */
+    .modal-content {
+        width: 95% !important;
+        max-width: 95% !important;
+        max-height: 90vh !important;
+        overflow-y: auto;
+    }
+    
+    .form-section {
+        padding: 15px;
+    }
+    
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    /* 버튼 최적화 */
+    .action-buttons {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .btn {
+        width: 100%;
+    }
+    
+    /* 테이블 최적화 */
+    .data-table {
+        font-size: 0.9rem;
+    }
+    
+    .data-table th, .data-table td {
+        padding: 8px 5px;
+    }
+    
+    /* 통계 카드 최적화 */
+    .statistics-cards {
+        grid-template-columns: 1fr;
+    }
+    
+    /* 알림톡 미리보기 최적화 */
+    .alimtalk-preview-container {
+        max-height: 30vh;
+        overflow-y: auto;
     }
 }
