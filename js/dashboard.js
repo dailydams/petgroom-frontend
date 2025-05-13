@@ -1071,33 +1071,36 @@ async function saveAppointmentFromForm(form) {
         const defaultAgreement = form.querySelector('#agreement-default').checked;
         const seniorAgreement = form.querySelector('#agreement-senior').checked;
         
-        // 예약 데이터 구성
+        // 예약 데이터 구성 - API 형식에 맞게 수정
         const appointmentData = {
-            customerId: '', // 고객 ID 필드 (예약 저장 후 할당)
-            customer: {
+            date: appointmentDate,
+            startTime: startTime,
+            endTime: endTime,
+            service: serviceName,
+            guardian: {
                 name: guardianName,
                 phone: guardianPhone,
                 memo: guardianMemo,
                 alimtalkConsent
             },
-            pets,
-            date: appointmentDate,
-            startTime,
-            endTime,
-            staffId,
-            service: serviceName,
-            status: 'scheduled',
-            memo: appointmentMemo,
-            alimtalk: {
-                option: alimtalkOption,
-                sent: false
+            pets: pets,
+            staff: {
+                id: staffId
             },
+            status: 'reserved',
+            memo: appointmentMemo,
+            alimtalk: alimtalkOption,
             agreements: {
                 default: defaultAgreement,
                 senior: seniorAgreement
-            },
-            createdAt: new Date().toISOString()
+            }
         };
+        
+        // 예약 ID가 있는 경우 (편집 모드)
+        const appointmentId = form.dataset.appointmentId;
+        if (appointmentId) {
+            appointmentData.id = appointmentId;
+        }
         
         console.log('예약 저장 데이터:', appointmentData);
         
@@ -1487,7 +1490,13 @@ function renderAppointmentsForStaff(container, staffId) {
         // 예약 클릭 시 상세 정보 및 상태 변경 모달
         appointmentItem.addEventListener('click', (e) => {
             e.stopPropagation(); // 부모 요소 클릭 이벤트 방지
-            openSaleModal(app);
+            // 예약 상태가 'reserved' 또는 'scheduled'인 경우 편집 모달 열기
+            if (app.status === 'reserved' || app.status === 'scheduled') {
+                openAppointmentModal(null, null, null, app);
+            } else {
+                // 그 외 상태(완료 등)인 경우 매출 등록 모달 열기
+                openSaleModal(app);
+            }
         });
         
         slot.appendChild(appointmentItem);
@@ -1776,7 +1785,13 @@ async function loadMonthView() {
                     
                     appointmentElement.addEventListener('click', (e) => {
                         e.stopPropagation();
-                        openSaleModal(app);
+                        // 예약 상태가 'reserved' 또는 'scheduled'인 경우 편집 모달 열기
+                        if (app.status === 'reserved' || app.status === 'scheduled') {
+                            openAppointmentModal(null, null, null, app);
+                        } else {
+                            // 그 외 상태(완료 등)인 경우 매출 등록 모달 열기
+                            openSaleModal(app);
+                        }
                     });
                     
                     appointmentsContainer.appendChild(appointmentElement);
@@ -1820,27 +1835,189 @@ async function loadMonthView() {
 }
 
 // 예약 모달 열기
-async function openAppointmentModal(time = null, staffId = null, date = null) {
+async function openAppointmentModal(time = null, staffId = null, date = null, appointmentData = null) {
     try {
         const modal = document.getElementById('appointment-modal');
         const form = document.getElementById('appointment-form');
         form.reset();
         
-        // 날짜 및 시간 초기화
-        if (date) {
-            // 전달받은 날짜가 있으면 해당 날짜로 설정
-            document.getElementById('appointment-date').value = formatDate(date);
-        } else {
-            document.getElementById('appointment-date').value = formatDate(currentDate);
+        // 폼 데이터 속성 초기화
+        form.removeAttribute('data-appointment-id');
+        
+        // 모달 타이틀 설정
+        const modalTitle = modal.querySelector('.modal-header h2');
+        if (modalTitle) {
+            modalTitle.textContent = appointmentData ? '예약 편집' : '신규 예약';
         }
         
-        if (time) {
-            document.getElementById('appointment-start-time').value = time;
+        // 기존 예약 데이터가 있는 경우 폼에 로드
+        if (appointmentData) {
+            // 예약 ID 저장
+            form.dataset.appointmentId = appointmentData.id;
             
-            // 기본 서비스 선택 (목욕 - 30분)
-            const bathBtn = document.querySelector('[data-service="목욕"]');
-            if (bathBtn) bathBtn.click();
-            else document.getElementById('selected-service').value = '목욕';
+            // 날짜 및 시간 설정
+            document.getElementById('appointment-date').value = appointmentData.date;
+            document.getElementById('appointment-start-time').value = appointmentData.startTime;
+            document.getElementById('appointment-end-time').value = appointmentData.endTime;
+            
+            // 고객 정보 설정
+            const guardian = appointmentData.guardian || {};
+            document.getElementById('guardian-name').value = guardian.name || '';
+            document.getElementById('guardian-phone').value = guardian.phone || '';
+            document.getElementById('guardian-memo').value = guardian.memo || '';
+            document.getElementById('alimtalk-consent').checked = guardian.alimtalkConsent !== false;
+            
+            // 서비스 설정
+            document.getElementById('selected-service').value = appointmentData.service || '';
+            
+            // 서비스 버튼 활성화
+            const serviceButtons = document.querySelectorAll('.service-btn');
+            serviceButtons.forEach(btn => {
+                if (btn.dataset.service === appointmentData.service) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+            
+            // 알림톡 옵션
+            let alimtalkOption = 'none';
+            if (typeof appointmentData.alimtalk === 'object') {
+                alimtalkOption = appointmentData.alimtalk.option || 'none';
+            } else {
+                alimtalkOption = appointmentData.alimtalk || 'none';
+            }
+            
+            const alimtalkRadio = document.querySelector(`input[name="alimtalk-option"][value="${alimtalkOption}"]`);
+            if (alimtalkRadio) alimtalkRadio.checked = true;
+            
+            // 동의서
+            const agreements = appointmentData.agreements || {};
+            document.getElementById('agreement-default').checked = !!agreements.default;
+            document.getElementById('agreement-senior').checked = !!agreements.senior;
+            
+            // 메모
+            document.getElementById('appointment-memo').value = appointmentData.memo || '';
+            
+            // 담당자 설정 (아래 staffId 로직에서 처리됨)
+            staffId = appointmentData.staff ? appointmentData.staff.id : null;
+            
+            // 반려동물 정보 로드
+            const petsContainer = document.getElementById('pet-containers');
+            petsContainer.innerHTML = '';
+            
+            if (appointmentData.pets && appointmentData.pets.length > 0) {
+                appointmentData.pets.forEach((pet, index) => {
+                    const petIndex = index + 1;
+                    const petContainer = document.createElement('div');
+                    petContainer.className = 'pet-container';
+                    petContainer.innerHTML = `
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="pet-name-${petIndex}">반려동물명</label>
+                                <input type="text" id="pet-name-${petIndex}" name="pet_name_${petIndex}" class="form-control pet-name" value="${pet.name || ''}" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="pet-breed-${petIndex}">품종</label>
+                                <input type="text" id="pet-breed-${petIndex}" name="pet_breed_${petIndex}" class="form-control pet-breed" value="${pet.breed || ''}" required>
+                            </div>
+                        </div>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="pet-weight-${petIndex}">몸무게(kg)</label>
+                                <input type="number" id="pet-weight-${petIndex}" name="pet_weight_${petIndex}" class="form-control pet-weight" step="0.1" value="${pet.weight || ''}" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="pet-age-${petIndex}">나이</label>
+                                <input type="number" id="pet-age-${petIndex}" name="pet_age_${petIndex}" class="form-control pet-age" value="${pet.age || ''}">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="pet-memo-${petIndex}">반려동물 메모</label>
+                            <textarea id="pet-memo-${petIndex}" name="pet_memo_${petIndex}" class="form-control pet-memo">${pet.memo || ''}</textarea>
+                        </div>
+                    `;
+                    petsContainer.appendChild(petContainer);
+                });
+            } else {
+                // 기본 반려동물 폼 추가
+                const petContainer = document.createElement('div');
+                petContainer.className = 'pet-container';
+                petContainer.innerHTML = `
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="pet-name-1">반려동물명</label>
+                            <input type="text" id="pet-name-1" name="pet_name_1" class="form-control pet-name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="pet-breed-1">품종</label>
+                            <input type="text" id="pet-breed-1" name="pet_breed_1" class="form-control pet-breed" required>
+                        </div>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="pet-weight-1">몸무게(kg)</label>
+                            <input type="number" id="pet-weight-1" name="pet_weight_1" class="form-control pet-weight" step="0.1" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="pet-age-1">나이</label>
+                            <input type="number" id="pet-age-1" name="pet_age_1" class="form-control pet-age">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="pet-memo-1">반려동물 메모</label>
+                        <textarea id="pet-memo-1" name="pet_memo_1" class="form-control pet-memo"></textarea>
+                    </div>
+                `;
+                petsContainer.appendChild(petContainer);
+            }
+        } else {
+            // 날짜 및 시간 초기화
+            if (date) {
+                // 전달받은 날짜가 있으면 해당 날짜로 설정
+                document.getElementById('appointment-date').value = formatDate(date);
+            } else {
+                document.getElementById('appointment-date').value = formatDate(currentDate);
+            }
+            
+            if (time) {
+                document.getElementById('appointment-start-time').value = time;
+                
+                // 기본 서비스 선택 (목욕 - 30분)
+                const bathBtn = document.querySelector('[data-service="목욕"]');
+                if (bathBtn) bathBtn.click();
+                else document.getElementById('selected-service').value = '목욕';
+            }
+            
+            // 펫 컨테이너 초기화 (하나만 표시)
+            document.getElementById('pet-containers').innerHTML = `
+                <div class="pet-container">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="pet-name-1">반려동물명</label>
+                            <input type="text" id="pet-name-1" name="pet_name_1" class="form-control pet-name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="pet-breed-1">품종</label>
+                            <input type="text" id="pet-breed-1" name="pet_breed_1" class="form-control pet-breed" required>
+                        </div>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="pet-weight-1">몸무게(kg)</label>
+                            <input type="number" id="pet-weight-1" name="pet_weight_1" class="form-control pet-weight" step="0.1" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="pet-age-1">나이</label>
+                            <input type="number" id="pet-age-1" name="pet_age_1" class="form-control pet-age">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="pet-memo-1">반려동물 메모</label>
+                        <textarea id="pet-memo-1" name="pet_memo_1" class="form-control pet-memo"></textarea>
+                    </div>
+                </div>
+            `;
         }
         
         // 담당자 목록 초기화
@@ -1872,67 +2049,14 @@ async function openAppointmentModal(time = null, staffId = null, date = null) {
             }
         });
         
-        // 펫 컨테이너 초기화 (하나만 표시)
-        document.getElementById('pet-containers').innerHTML = `
-            <div class="pet-container">
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label for="pet-name-1">반려동물명</label>
-                        <input type="text" id="pet-name-1" name="pet_name_1" class="form-control pet-name" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="pet-breed-1">품종</label>
-                        <input type="text" id="pet-breed-1" name="pet_breed_1" class="form-control pet-breed" required>
-                    </div>
-                </div>
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label for="pet-weight-1">몸무게(kg)</label>
-                        <input type="number" id="pet-weight-1" name="pet_weight_1" class="form-control pet-weight" step="0.1" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="pet-age-1">나이</label>
-                        <input type="number" id="pet-age-1" name="pet_age_1" class="form-control pet-age">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label for="pet-memo-1">반려동물 메모</label>
-                    <textarea id="pet-memo-1" name="pet_memo_1" class="form-control pet-memo"></textarea>
-                </div>
-            </div>
-        `;
-        
-        // 고객 검색 기능 추가
-        const guardianNameInput = document.getElementById('guardian-name');
-        const guardianPhoneInput = document.getElementById('guardian-phone');
-        
-        // 검색 결과 표시 컨테이너 추가
-        let searchResultsContainer = document.getElementById('customer-search-results');
-        if (!searchResultsContainer) {
-            searchResultsContainer = document.createElement('div');
-            searchResultsContainer.id = 'customer-search-results';
-            searchResultsContainer.className = 'search-results-container';
+        // 반려동물 입력 필드에 검색 자동완성 이벤트 추가
+        const petNameInputs = document.querySelectorAll('.pet-name');
+        petNameInputs.forEach(petNameInput => {
+            const searchResultsContainer = document.createElement('div');
+            searchResultsContainer.className = 'search-results';
             searchResultsContainer.style.display = 'none';
-            searchResultsContainer.style.position = 'absolute';
-            searchResultsContainer.style.zIndex = '9999';
-            searchResultsContainer.style.width = '100%';
-            searchResultsContainer.style.top = '100%';
-            searchResultsContainer.style.left = '0';
-            searchResultsContainer.style.backgroundColor = '#fff';
-            searchResultsContainer.style.border = '1px solid #ddd';
-            searchResultsContainer.style.borderRadius = '4px';
-            searchResultsContainer.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
-            searchResultsContainer.style.maxHeight = '300px';
-            searchResultsContainer.style.overflowY = 'auto';
+            petNameInput.parentNode.appendChild(searchResultsContainer);
             
-            // 검색 결과 컨테이너를 보호자 이름 입력 필드 아래에 배치
-            guardianNameInput.parentNode.style.position = 'relative';
-            guardianNameInput.parentNode.appendChild(searchResultsContainer);
-        }
-        
-        // 반려동물명 입력 시 검색 기능 추가
-        const petNameInput = document.getElementById('pet-name-1');
-        if (petNameInput) {
             petNameInput.addEventListener('input', debounce(async function() {
                 const searchTerm = petNameInput.value.trim();
                 if (searchTerm.length < 2) {
@@ -1941,16 +2065,16 @@ async function openAppointmentModal(time = null, staffId = null, date = null) {
                 }
                 
                 try {
-                    // 로컬 고객 데이터 검색
-                    const matchingCustomers = customers.filter(customer => 
-                        customer.pets && customer.pets.some(pet => 
-                            pet.name && pet.name.toLowerCase().includes(searchTerm.toLowerCase())
-                        )
-                    );
+                    searchResultsContainer.innerHTML = ''; // 결과 초기화
                     
-                    if (matchingCustomers.length > 0) {
-                        // 검색 결과가 있으면 드롭다운 표시
-                        searchResultsContainer.innerHTML = '';
+                    // 로컬 데이터에서 고객 검색
+                    if (customers && customers.length > 0) {
+                        // 반려동물 이름과 일치하는 고객 찾기
+                        const matchingCustomers = customers.filter(customer => 
+                            customer.pets && customer.pets.some(pet => 
+                                pet.name && pet.name.toLowerCase().includes(searchTerm.toLowerCase())
+                            )
+                        );
                         
                         matchingCustomers.forEach(customer => {
                             // 일치하는 반려동물 찾기
@@ -1962,21 +2086,32 @@ async function openAppointmentModal(time = null, staffId = null, date = null) {
                                 const resultItem = document.createElement('div');
                                 resultItem.className = 'search-result-item';
                                 resultItem.innerHTML = `
-                                    <div class="result-pet-name">${pet.name} (${pet.breed || '품종 미상'})</div>
-                                    <div class="result-customer-info">${customer.name} - ${customer.phone || ''}</div>
+                                    <strong>${pet.name}</strong> - ${pet.breed || '품종 미상'}, ${pet.weight || '?'}kg
+                                    <br><small>${customer.name} (${customer.phone})</small>
                                 `;
                                 
-                                // 결과 항목 클릭 시 자동 완성
                                 resultItem.addEventListener('click', () => {
-                                    // 반려동물 정보 입력
+                                    // 선택한 반려동물 및 고객 정보로 폼 채우기
                                     petNameInput.value = pet.name || '';
-                                    document.getElementById('pet-breed-1').value = pet.breed || '';
-                                    document.getElementById('pet-weight-1').value = pet.weight || '';
-                                    document.getElementById('pet-age-1').value = pet.age || '';
-                                    document.getElementById('pet-memo-1').value = pet.memo || '';
                                     
-                                    // 고객 정보도 자동 입력
-                                    handleCustomerSearchResult(customer, guardianNameInput, guardianPhoneInput, searchResultsContainer);
+                                    // 같은 행의 다른 필드들 채우기
+                                    const petContainer = petNameInput.closest('.pet-container');
+                                    const breedInput = petContainer.querySelector('.pet-breed');
+                                    const weightInput = petContainer.querySelector('.pet-weight');
+                                    const ageInput = petContainer.querySelector('.pet-age');
+                                    const memoInput = petContainer.querySelector('.pet-memo');
+                                    
+                                    if (breedInput) breedInput.value = pet.breed || '';
+                                    if (weightInput) weightInput.value = pet.weight || '';
+                                    if (ageInput) ageInput.value = pet.age || '';
+                                    if (memoInput) memoInput.value = pet.memo || '';
+                                    
+                                    // 보호자 정보 채우기
+                                    document.getElementById('guardian-name').value = customer.name || '';
+                                    document.getElementById('guardian-phone').value = customer.phone || '';
+                                    
+                                    // 결과 닫기
+                                    searchResultsContainer.style.display = 'none';
                                 });
                                 
                                 searchResultsContainer.appendChild(resultItem);
@@ -2003,17 +2138,6 @@ async function openAppointmentModal(time = null, staffId = null, date = null) {
                             );
                             
                             if (apiMatchingCustomers.length > 0) {
-                                // 로컬 메모리 데이터에 추가 (중복 방지)
-                                apiMatchingCustomers.forEach(customer => {
-                                    const existingCustomer = customers.find(c => c.id === customer.id);
-                                    if (!existingCustomer) {
-                                        customers.push(customer);
-                                    }
-                                });
-                                
-                                // 검색 결과 업데이트
-                                searchResultsContainer.innerHTML = '';
-                                
                                 apiMatchingCustomers.forEach(customer => {
                                     const matchingPets = customer.pets.filter(pet => 
                                         pet.name && pet.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -2023,20 +2147,32 @@ async function openAppointmentModal(time = null, staffId = null, date = null) {
                                         const resultItem = document.createElement('div');
                                         resultItem.className = 'search-result-item';
                                         resultItem.innerHTML = `
-                                            <div class="result-pet-name">${pet.name} (${pet.breed || '품종 미상'})</div>
-                                            <div class="result-customer-info">${customer.name} - ${customer.phone || ''}</div>
+                                            <strong>${pet.name}</strong> - ${pet.breed || '품종 미상'}, ${pet.weight || '?'}kg
+                                            <br><small>${customer.name} (${customer.phone})</small>
                                         `;
                                         
                                         resultItem.addEventListener('click', () => {
-                                            // 반려동물 정보 입력
+                                            // 선택한 반려동물 및 고객 정보로 폼 채우기
                                             petNameInput.value = pet.name || '';
-                                            document.getElementById('pet-breed-1').value = pet.breed || '';
-                                            document.getElementById('pet-weight-1').value = pet.weight || '';
-                                            document.getElementById('pet-age-1').value = pet.age || '';
-                                            document.getElementById('pet-memo-1').value = pet.memo || '';
                                             
-                                            // 고객 정보도 자동 입력
-                                            handleCustomerSearchResult(customer, guardianNameInput, guardianPhoneInput, searchResultsContainer);
+                                            // 같은 행의 다른 필드들 채우기
+                                            const petContainer = petNameInput.closest('.pet-container');
+                                            const breedInput = petContainer.querySelector('.pet-breed');
+                                            const weightInput = petContainer.querySelector('.pet-weight');
+                                            const ageInput = petContainer.querySelector('.pet-age');
+                                            const memoInput = petContainer.querySelector('.pet-memo');
+                                            
+                                            if (breedInput) breedInput.value = pet.breed || '';
+                                            if (weightInput) weightInput.value = pet.weight || '';
+                                            if (ageInput) ageInput.value = pet.age || '';
+                                            if (memoInput) memoInput.value = pet.memo || '';
+                                            
+                                            // 보호자 정보 채우기
+                                            document.getElementById('guardian-name').value = customer.name || '';
+                                            document.getElementById('guardian-phone').value = customer.phone || '';
+                                            
+                                            // 결과 닫기
+                                            searchResultsContainer.style.display = 'none';
                                         });
                                         
                                         searchResultsContainer.appendChild(resultItem);
@@ -2045,25 +2181,27 @@ async function openAppointmentModal(time = null, staffId = null, date = null) {
                                 
                                 if (searchResultsContainer.childElementCount > 0) {
                                     searchResultsContainer.style.display = 'block';
-                                } else {
-                                    searchResultsContainer.style.display = 'none';
                                 }
-                            } else {
-                                searchResultsContainer.style.display = 'none';
                             }
-                        } catch (apiError) {
-                            console.warn('API 고객 검색 실패:', apiError);
-                            searchResultsContainer.style.display = 'none';
+                        } catch (error) {
+                            console.error('API 고객 검색 실패:', error);
                         }
                     }
                 } catch (error) {
-                    console.error('반려동물 이름으로 고객 검색 중 오류:', error);
+                    console.error('반려동물 검색 중 오류:', error);
                     searchResultsContainer.style.display = 'none';
                 }
             }, 300));
-        }
+        });
         
-        // 보호자 이름 입력 시 검색
+        // 보호자 이름 입력 필드에 검색 자동완성 이벤트 추가
+        const guardianNameInput = document.getElementById('guardian-name');
+        const searchResultsContainer = document.createElement('div');
+        searchResultsContainer.className = 'search-results';
+        searchResultsContainer.style.display = 'none';
+        guardianNameInput.parentNode.appendChild(searchResultsContainer);
+        
+        // 사용자가 이름 필드에 입력 시 자동완성
         guardianNameInput.addEventListener('input', debounce(async function() {
             const searchTerm = guardianNameInput.value.trim();
             if (searchTerm.length < 2) {
@@ -2072,33 +2210,59 @@ async function openAppointmentModal(time = null, staffId = null, date = null) {
             }
             
             try {
-                console.log('보호자 이름으로 검색:', searchTerm);
-                const response = await API.getCustomers(1, 5, searchTerm);
-                const searchResults = response.customers || [];
+                searchResultsContainer.innerHTML = ''; // 결과 초기화
                 
-                if (searchResults.length > 0) {
-                    searchResultsContainer.innerHTML = '';
+                // 로컬 데이터에서 고객 검색
+                if (customers && customers.length > 0) {
+                    const matchingCustomers = customers.filter(customer => 
+                        customer.name && customer.name.toLowerCase().includes(searchTerm.toLowerCase())
+                    );
                     
-                    searchResults.forEach(customer => {
+                    matchingCustomers.forEach(customer => {
                         const resultItem = document.createElement('div');
                         resultItem.className = 'search-result-item';
                         resultItem.innerHTML = `
-                            <div class="customer-name">${customer.name}</div>
-                            <div class="customer-phone">${customer.phone || ''}</div>
-                            <div class="customer-pets">${(customer.pets || []).map(p => p.name).join(', ')}</div>
+                            <strong>${customer.name}</strong> (${customer.phone})
+                            <br><small>${customer.pets ? customer.pets.map(p => p.name).join(', ') : '반려동물 없음'}</small>
                         `;
                         
                         resultItem.addEventListener('click', () => {
-                            // 고객 정보 자동입력 처리
                             handleCustomerSearchResult(customer, guardianNameInput, guardianPhoneInput, searchResultsContainer);
                         });
                         
                         searchResultsContainer.appendChild(resultItem);
                     });
                     
-                    searchResultsContainer.style.display = 'block';
+                    if (matchingCustomers.length > 0) {
+                        searchResultsContainer.style.display = 'block';
+                    } else {
+                        searchResultsContainer.style.display = 'none';
+                    }
                 } else {
-                    searchResultsContainer.style.display = 'none';
+                    // API를 통한 고객 검색
+                    const response = await API.getCustomers(1, 5, searchTerm);
+                    const apiCustomers = response.customers || [];
+                    
+                    if (apiCustomers.length > 0) {
+                        apiCustomers.forEach(customer => {
+                            const resultItem = document.createElement('div');
+                            resultItem.className = 'search-result-item';
+                            resultItem.innerHTML = `
+                                <strong>${customer.name}</strong> (${customer.phone})
+                                <br><small>${customer.pets ? customer.pets.map(p => p.name).join(', ') : '반려동물 없음'}</small>
+                            `;
+                            
+                            resultItem.addEventListener('click', () => {
+                                handleCustomerSearchResult(customer, guardianNameInput, guardianPhoneInput, searchResultsContainer);
+                            });
+                            
+                            searchResultsContainer.appendChild(resultItem);
+                        });
+                        
+                        searchResultsContainer.style.display = 'block';
+                    } else {
+                        searchResultsContainer.style.display = 'none';
+                    }
                 }
             } catch (error) {
                 console.error('고객 검색 중 오류:', error);
@@ -2107,6 +2271,7 @@ async function openAppointmentModal(time = null, staffId = null, date = null) {
         }, 300));
         
         // 전화번호 입력 시 검색
+        const guardianPhoneInput = document.getElementById('guardian-phone');
         guardianPhoneInput.addEventListener('input', debounce(async function() {
             const phone = guardianPhoneInput.value.trim();
             if (phone.length < 4) return;
