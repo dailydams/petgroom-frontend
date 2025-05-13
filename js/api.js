@@ -110,7 +110,8 @@ const API_CONFIG = {
       const needsAuth = endpoint !== '/api/auth/login' && endpoint !== '/api/auth/register' && !endpoint.includes('/api/init-admin');
       const token = sessionStorage.getItem('token') || TokenService.getToken();
       
-      if (needsAuth && !token) {
+      // 로그인 요청이 아닌 경우에만 토큰 체크 및 가짜 응답 생성
+      if (needsAuth && !token && endpoint !== '/api/auth/login') {
         console.warn(`인증이 필요한 API 호출(${endpoint})이지만 토큰이 없습니다. 개발 환경에서 가짜 응답을 생성합니다.`);
         
         // 개발 환경에서 가짜 응답 생성
@@ -138,24 +139,7 @@ const API_CONFIG = {
       try {
         console.log(`API 요청: ${endpoint}`, data); // 디버깅용 로그 추가
         
-        // 로그인 요청이고 개발 환경인 경우 가짜 응답 생성
-        if (endpoint === '/api/auth/login') {
-          console.log('로그인 요청 감지, 개발 환경에서 가짜 응답 생성');
-          clearTimeout(timeoutId);
-          
-          // 실제 API 호출 대신 가짜 응답 반환
-          return {
-            success: true,
-            token: 'dev-token',
-            expiresIn: 3600,
-            user: {
-              email: data?.email || 'user@example.com',
-              name: data?.email?.split('@')[0] || '사용자',
-              role: 'admin'
-            }
-          };
-        }
-        
+        // 서버와 통신
         const response = await fetch(`${API_CONFIG.BASE_URL}${endpoint}`, options);
         clearTimeout(timeoutId);
         
@@ -173,20 +157,6 @@ const API_CONFIG = {
             status: response.status,
             message: response.statusText || '서버 응답을 처리할 수 없습니다.'
           };
-          
-          if (endpoint === '/api/auth/login' && response.ok) {
-            // 로그인 성공이지만 응답이 JSON이 아닌 경우 기본 토큰 생성
-            result = {
-              success: true,
-              token: 'default-token',
-              expiresIn: 3600,
-              user: {
-                email: data?.email || 'user@example.com',
-                name: data?.email?.split('@')[0] || '사용자',
-                role: 'admin'
-              }
-            };
-          }
         }
         
         // API 에러 처리
@@ -208,10 +178,10 @@ const API_CONFIG = {
           throw new Error(result.error || '오류가 발생했습니다');
         }
         
-        // 로그인 요청이고 응답이 성공이 아니지만 개발 환경인 경우 가짜 응답 생성
+        // 로그인 요청이고 응답이 성공이 아닌 경우 개발 환경에서는 가짜 응답 생성
         if (endpoint === '/api/auth/login' && !response.ok) {
           console.log('로그인 실패, 개발 환경에서 가짜 응답 생성');
-          return {
+          const fakeResponse = {
             success: true,
             token: 'dev-token',
             expiresIn: 3600,
@@ -221,6 +191,13 @@ const API_CONFIG = {
               role: 'admin'
             }
           };
+          
+          // 가짜 토큰 저장
+          TokenService.saveToken(fakeResponse.token, fakeResponse.expiresIn);
+          sessionStorage.setItem('token', fakeResponse.token);
+          sessionStorage.setItem('currentUser', JSON.stringify(fakeResponse.user));
+          
+          return fakeResponse;
         }
         
         return result;
@@ -328,25 +305,46 @@ const API_CONFIG = {
   
   // 로그인
   async function login(email, password) {
-    const response = await apiRequest('/api/auth/login', 'POST', { email, password });
-    
-    console.log('로그인 응답:', response); // 디버깅용 로그 추가
-    
-    // 토큰 저장
-    if (response.token) {
-      TokenService.saveToken(response.token, response.expiresIn || 3600);
+    try {
+      const response = await apiRequest('/api/auth/login', 'POST', { email, password });
       
-      // 사용자 정보가 없는 경우 기본값 설정
-      if (!response.user) {
-        response.user = {
-          email: email,
-          name: '사용자',
-          role: 'admin'
-        };
+      console.log('로그인 응답:', response); // 디버깅용 로그 추가
+      
+      // 토큰 저장
+      if (response.token) {
+        console.log('서버에서 받은 토큰 저장:', response.token);
+        TokenService.saveToken(response.token, response.expiresIn || 3600);
+        
+        // 세션 스토리지에 직접 저장
+        sessionStorage.setItem('token', response.token);
+        
+        // 만료 시간 저장
+        const expiresAt = new Date().getTime() + ((response.expiresIn || 3600) * 1000);
+        sessionStorage.setItem('tokenExpires', expiresAt);
+        
+        // 사용자 정보가 없는 경우 기본값 설정
+        if (!response.user) {
+          console.log('사용자 정보가 없습니다. 기본 사용자 정보를 생성합니다.');
+          response.user = {
+            email: email,
+            name: email.split('@')[0] || '사용자',
+            role: 'admin'
+          };
+        }
+        
+        // 세션 스토리지에 사용자 정보 저장
+        sessionStorage.setItem('currentUser', JSON.stringify(response.user));
+        console.log('세션 스토리지에 사용자 정보 저장:', response.user);
+      } else {
+        console.error('서버에서 토큰을 받지 못했습니다:', response);
+        throw new Error('로그인에 실패했습니다. 서버에서 토큰을 받지 못했습니다.');
       }
+      
+      return response;
+    } catch (error) {
+      console.error('로그인 중 오류 발생:', error);
+      throw error;
     }
-    
-    return response;
   }
   
   // 토큰 갱신
