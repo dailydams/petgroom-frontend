@@ -71,6 +71,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         const token = sessionStorage.getItem('token');
         console.log('세션에 저장된 토큰 존재 여부:', !!token);
         
+        // 토큰이 없으면 로그인 페이지로 리디렉션
+        if (!token) {
+            console.log('토큰이 없습니다. 로그인 페이지로 리디렉션합니다.');
+            window.location.href = 'index.html';
+            return;
+        }
+        
         // API를 통한 로그인 상태 확인
         const isLoggedInResponse = await API.getMe();
         console.log('API.getMe() 응답:', isLoggedInResponse);
@@ -127,6 +134,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
             
+            // 토큰 삭제
+            sessionStorage.removeItem('token');
+            sessionStorage.removeItem('tokenExpires');
+            sessionStorage.removeItem('currentUser');
+            
             // 로그인 페이지로 리디렉트
             console.log('로그인 페이지로 리디렉션합니다.');
             window.location.href = 'index.html';
@@ -134,6 +146,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (error) {
         console.error('초기화 중 오류:', error);
         ToastNotification.show('애플리케이션 초기화 중 오류가 발생했습니다.', 'error');
+        
+        // 오류 발생 시 로그인 페이지로 리디렉션
+        setTimeout(() => {
+            window.location.href = 'index.html';
+        }, 2000);
     }
 });
 
