@@ -798,12 +798,29 @@ function initCalendarView() {
 // 달력 헤더 날짜 업데이트
 function updateCalendarHeader() {
     try {
-        if (currentDate) {
-            // 날짜를 한국어로 표시 (0월0일 0요일)
-            const options = { month: 'long', day: 'numeric', weekday: 'long' };
-            const formattedDate = currentDate.toLocaleDateString('ko-KR', options);
-            document.getElementById('current-date').textContent = formattedDate;
+        const currentDateElement = document.getElementById('current-date');
+        if (!currentDateElement) {
+            console.error('current-date 요소를 찾을 수 없습니다.');
+            return;
         }
+        
+        if (!currentDate || isNaN(currentDate.getTime())) {
+            console.warn('유효하지 않은 currentDate가 사용됨. 새로운 날짜로 초기화합니다.');
+            currentDate = new Date();
+        }
+        
+        // 날짜를 한국어로 표시 (YYYY년 MM월 DD일 요일)
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth() + 1;
+        const day = currentDate.getDate();
+        const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
+        const weekday = weekdays[currentDate.getDay()];
+        
+        // 날짜 형식을 명확하게 지정
+        const formattedDate = `${year}년 ${month}월 ${day}일 (${weekday})`;
+        currentDateElement.textContent = formattedDate;
+        
+        console.log('캘린더 헤더 업데이트 완료:', formattedDate);
     } catch (error) {
         console.error('날짜 표시 업데이트 중 오류:', error);
     }
@@ -860,18 +877,29 @@ function navigateCalendar(direction) {
 // 오늘 날짜로 이동하는 함수
 async function navigateToToday() {
     try {
-        if (isLoading) return; // 로딩 중이면 이벤트 무시
+        if (isLoading) {
+            console.log('이미 로딩 중이므로 오늘 날짜 이동을 건너뜁니다.');
+            return;
+        }
         
         console.log('오늘 날짜로 이동 시작');
-        // 현재 시스템 날짜로 설정
+        LoadingIndicator.show('오늘 날짜로 이동 중...');
+        
+        // 현재 시스템 날짜로 설정 (깊은 복사가 아닌 새 객체 생성)
         currentDate = new Date();
         console.log('현재 날짜로 재설정:', currentDate);
         
+        // 캘린더 헤더 먼저 업데이트
         updateCalendarHeader();
+        
+        // 캘린더 렌더링
+        console.log('오늘 날짜 캘린더 로드 시작');
         await loadCalendar();
         
+        LoadingIndicator.hide();
         console.log('오늘 날짜로 이동 완료');
     } catch (error) {
+        LoadingIndicator.hide();
         console.error('오늘 날짜로 이동 중 오류:', error);
         ToastNotification.show('오늘 날짜로 이동 중 오류가 발생했습니다.', 'error');
     }
@@ -880,41 +908,73 @@ async function navigateToToday() {
 // 캘린더 메인 로드 함수
 async function loadCalendar() {
     try {
-        if (isLoading) return;
-        isLoading = true;
+        if (isLoading) {
+            console.log('이미 로딩 중이므로 캘린더 로드를 건너뜁니다.');
+            return;
+        }
         
+        isLoading = true;
         console.log('캘린더 로드 시작 - 현재 날짜:', currentDate);
+        
+        // 현재 날짜가 유효한지 확인
+        if (!currentDate || isNaN(currentDate.getTime())) {
+            console.warn('유효하지 않은 currentDate가 사용됨. 새로운 날짜로 초기화합니다.');
+            currentDate = new Date();
+        }
+        
         console.log('포맷된 날짜:', formatDate(currentDate));
         
-        // 로딩 표시 (빠른 로딩을 위해 짧게 표시)
-        const loadingTimeout = setTimeout(() => {
-            LoadingIndicator.show('캘린더 정보를 불러오는 중...');
-        }, 300);
+        // 로딩 표시 보이기
+        LoadingIndicator.show('캘린더 정보를 불러오는 중...');
+        
+        // 캘린더 헤더 업데이트
+        updateCalendarHeader();
         
         // 모든 캘린더 뷰 숨기기
         document.querySelectorAll('.calendar-view').forEach(view => {
             view.classList.remove('active');
         });
         
-        // 선택된 뷰 표시
+        // 선택된 뷰 표시 및 데이터 로드
+        console.log('현재 선택된 뷰:', currentView);
+        
         if (currentView === 'day') {
-            document.getElementById('day-view').classList.add('active');
-            await loadDayView();
+            const dayView = document.getElementById('day-view');
+            if (dayView) {
+                dayView.classList.add('active');
+                await loadDayView();
+            } else {
+                console.error('day-view 요소를 찾을 수 없습니다');
+            }
         } else if (currentView === 'week') {
-            document.getElementById('week-view').classList.add('active');
-            await loadWeekView();
+            const weekView = document.getElementById('week-view');
+            if (weekView) {
+                weekView.classList.add('active');
+                await loadWeekView();
+            } else {
+                console.error('week-view 요소를 찾을 수 없습니다');
+            }
         } else if (currentView === 'month') {
-            document.getElementById('month-view').classList.add('active');
-            await loadMonthView();
+            const monthView = document.getElementById('month-view');
+            if (monthView) {
+                monthView.classList.add('active');
+                await loadMonthView();
+            } else {
+                console.error('month-view 요소를 찾을 수 없습니다');
+            }
+        } else {
+            console.warn('지원되지 않는 캘린더 뷰:', currentView);
         }
         
         // 통계 업데이트
-        await updateAppointmentStats();
+        try {
+            await updateAppointmentStats();
+        } catch (statsError) {
+            console.error('통계 업데이트 중 오류:', statsError);
+        }
         
-        clearTimeout(loadingTimeout);
         LoadingIndicator.hide();
         isLoading = false;
-        
         console.log('캘린더 로드 완료');
     } catch (error) {
         LoadingIndicator.hide();
@@ -1178,8 +1238,21 @@ async function saveSaleFromForm() {
 // 날짜별 예약 조회
 async function loadDayView() {
     try {
+        console.log('일간 뷰 로드 시작');
         const staffSchedules = document.getElementById('staff-schedules');
+        
+        if (!staffSchedules) {
+            console.error('staff-schedules 요소를 찾을 수 없습니다.');
+            return;
+        }
+        
         staffSchedules.innerHTML = '';
+        
+        // 유효한 날짜 확인
+        if (!currentDate || isNaN(currentDate.getTime())) {
+            console.warn('일간 뷰: 유효하지 않은 currentDate가 사용됨. 새로운 날짜로 초기화합니다.');
+            currentDate = new Date();
+        }
         
         // 운영 시간 설정
         const startHour = 9;
@@ -1187,7 +1260,11 @@ async function loadDayView() {
         
         // 선택한 날짜의 예약 데이터 가져오기
         const dateStr = formatDate(currentDate);
+        console.log('일간 뷰 날짜:', dateStr, '스태프:', selectedStaffId);
+        
         const response = await API.getAppointmentsByDate(dateStr, selectedStaffId);
+        console.log('일간 뷰 API 응답:', response);
+        
         const dailyAppointments = response.appointments || [];
         
         // 전역 appointments 업데이트
@@ -1199,18 +1276,56 @@ async function loadDayView() {
             // 모든 디자이너 일정 표시
             const staffList = staffMembers.filter(staff => staff.role !== 'admin');
             
-            staffList.forEach(staff => {
-                const staffSchedule = createStaffSchedule(staff, startHour, endHour);
-                staffSchedules.appendChild(staffSchedule);
-            });
+            if (staffList.length === 0) {
+                console.warn('표시할 스태프가 없습니다. API를 통해 스태프 정보를 다시 가져옵니다.');
+                try {
+                    const staffResponse = await API.getStaff();
+                    staffMembers = staffResponse.staffMembers || [];
+                    const newStaffList = staffMembers.filter(staff => staff.role !== 'admin');
+                    
+                    if (newStaffList.length === 0) {
+                        console.error('스태프 정보를 가져왔지만 표시할 스태프가 없습니다.');
+                        const noStaffMsg = document.createElement('div');
+                        noStaffMsg.className = 'no-staff-message';
+                        noStaffMsg.textContent = '등록된 디자이너가 없습니다. 설정 메뉴에서 디자이너를 추가해주세요.';
+                        staffSchedules.appendChild(noStaffMsg);
+                        return;
+                    }
+                    
+                    newStaffList.forEach(staff => {
+                        const staffSchedule = createStaffSchedule(staff, startHour, endHour);
+                        staffSchedules.appendChild(staffSchedule);
+                    });
+                } catch (staffError) {
+                    console.error('스태프 정보 가져오기 실패:', staffError);
+                    const errorMsg = document.createElement('div');
+                    errorMsg.className = 'error-message';
+                    errorMsg.textContent = '디자이너 정보를 불러오는 중 오류가 발생했습니다.';
+                    staffSchedules.appendChild(errorMsg);
+                }
+            } else {
+                // 정상적으로 스태프 목록이 있는 경우
+                staffList.forEach(staff => {
+                    const staffSchedule = createStaffSchedule(staff, startHour, endHour);
+                    staffSchedules.appendChild(staffSchedule);
+                });
+            }
         } else {
             // 선택한 디자이너만 표시
             const staff = staffMembers.find(s => s.id === selectedStaffId);
             if (staff) {
                 const staffSchedule = createStaffSchedule(staff, startHour, endHour);
                 staffSchedules.appendChild(staffSchedule);
+            } else {
+                console.error('선택한 디자이너 정보를 찾을 수 없습니다:', selectedStaffId);
+                const notFoundMsg = document.createElement('div');
+                notFoundMsg.className = 'not-found-message';
+                notFoundMsg.textContent = '선택한 디자이너 정보를 찾을 수 없습니다.';
+                staffSchedules.appendChild(notFoundMsg);
             }
         }
+        
+        console.log('일간 뷰 로드 완료');
     } catch (error) {
         console.error('일간 예약 조회 중 오류:', error);
         ToastNotification.show(`예약 정보를 불러오는 중 오류가 발생했습니다: ${error.message}`, 'error');
@@ -3288,5 +3403,97 @@ function addCustomerPetForm() {
     } catch (error) {
         console.error('반려동물 폼 추가 중 오류:', error);
         ToastNotification.show('반려동물 정보 폼을 추가하는 중 오류가 발생했습니다.', 'error');
+    }
+}
+
+// 예약 통계 업데이트
+async function updateAppointmentStats() {
+    try {
+        // 현재 날짜에 대한 예약 통계 계산
+        const dateStr = formatDate(currentDate);
+        
+        // 예약 데이터가 없는 경우 API에서 가져오기
+        if (appointments.filter(app => app.date === dateStr).length === 0) {
+            console.log('통계: 현재 날짜의 예약 데이터가 없어 API에서 가져옵니다.');
+            try {
+                const response = await API.getAppointmentsByDate(dateStr);
+                if (response && response.appointments) {
+                    // 기존 다른 날짜의 데이터는 유지
+                    appointments = appointments.filter(app => app.date !== dateStr);
+                    appointments = [...appointments, ...response.appointments];
+                }
+            } catch (error) {
+                console.error('예약 데이터 조회 오류:', error);
+            }
+        }
+        
+        // 현재 날짜의 예약만 필터링
+        const todayAppointments = appointments.filter(app => app.date === dateStr);
+        
+        // 상태별 카운트
+        const reserved = todayAppointments.filter(app => app.status === 'reserved').length;
+        const completed = todayAppointments.filter(app => app.status === 'completed').length;
+        const cancelled = todayAppointments.filter(app => app.status === 'cancelled').length;
+        const total = todayAppointments.length;
+        
+        // 통계 요소 업데이트
+        const statsElements = {
+            'total-appointments': total,
+            'reserved-count': reserved,
+            'completed-count': completed,
+            'cancelled-count': cancelled
+        };
+        
+        // 각 통계 요소 업데이트
+        Object.entries(statsElements).forEach(([id, value]) => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.textContent = value;
+            }
+        });
+        
+        // 다음 예약 정보 업데이트
+        updateNextAppointment(todayAppointments);
+        
+        console.log('예약 통계 업데이트 완료');
+    } catch (error) {
+        console.error('예약 통계 업데이트 중 오류:', error);
+    }
+}
+
+// 다음 예약 정보 업데이트
+function updateNextAppointment(appointments) {
+    const nextAppointmentElement = document.getElementById('next-appointment');
+    if (!nextAppointmentElement) return;
+    
+    // 현재 시간 이후의 예약 중 가장 빠른 예약 찾기
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    const currentTimeString = `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`;
+    
+    // 예약 중 현재 시간 이후의 것만 필터링하고 시간순 정렬
+    const upcomingAppointments = appointments
+        .filter(app => app.status === 'reserved' && app.startTime >= currentTimeString)
+        .sort((a, b) => a.startTime.localeCompare(b.startTime));
+    
+    if (upcomingAppointments.length > 0) {
+        // 다음 예약 가져오기
+        const nextAppointment = upcomingAppointments[0];
+        
+        // 다음 예약 정보 표시
+        nextAppointmentElement.innerHTML = `
+            <div class="time">${nextAppointment.startTime}</div>
+            <div class="customer-info">
+                <span class="name">${nextAppointment.guardian.name}</span>
+                <span class="pet">${nextAppointment.pets.map(p => p.name).join(', ')}</span>
+            </div>
+            <div class="service">${nextAppointment.service}</div>
+        `;
+        nextAppointmentElement.style.display = 'flex';
+    } else {
+        // 다음 예약이 없는 경우
+        nextAppointmentElement.innerHTML = '<div class="no-appointment">오늘 남은 예약이 없습니다.</div>';
+        nextAppointmentElement.style.display = 'flex';
     }
 }
