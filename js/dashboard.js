@@ -439,11 +439,16 @@ function initAppointmentEvents() {
                 
                 // 반려동물 정보 처리
                 const pets = Array.from(document.querySelectorAll('.pet-container')).map(container => {
+                    const nameElement = container.querySelector('[name^="pet_name"]');
+                    const breedElement = container.querySelector('[name^="pet_breed"]');
+                    const ageElement = container.querySelector('[name^="pet_age"]');
+                    const weightElement = container.querySelector('[name^="pet_weight"]');
+                    
                     return {
-                        name: container.querySelector('[name^="pet_name"]').value,
-                        breed: container.querySelector('[name^="pet_breed"]').value,
-                        age: container.querySelector('[name^="pet_age"]').value,
-                        weight: container.querySelector('[name^="pet_weight"]').value
+                        name: nameElement ? nameElement.value : '',
+                        breed: breedElement ? breedElement.value : '',
+                        age: ageElement ? ageElement.value : '',
+                        weight: weightElement ? weightElement.value : ''
                     };
                 });
                 appointmentData.pets = pets;
@@ -2067,26 +2072,26 @@ function addPetForm() {
         <div class="form-grid">
             <div class="form-group">
                 <label for="pet-name-${petCount}">반려동물명</label>
-                <input type="text" id="pet-name-${petCount}" class="form-control pet-name" required>
+                <input type="text" id="pet-name-${petCount}" name="pet_name_${petCount}" class="form-control pet-name" required>
             </div>
             <div class="form-group">
                 <label for="pet-breed-${petCount}">품종</label>
-                <input type="text" id="pet-breed-${petCount}" class="form-control pet-breed" required>
+                <input type="text" id="pet-breed-${petCount}" name="pet_breed_${petCount}" class="form-control pet-breed" required>
             </div>
         </div>
         <div class="form-grid">
             <div class="form-group">
                 <label for="pet-weight-${petCount}">몸무게(kg)</label>
-                <input type="number" id="pet-weight-${petCount}" class="form-control pet-weight" step="0.1" required>
+                <input type="number" id="pet-weight-${petCount}" name="pet_weight_${petCount}" class="form-control pet-weight" step="0.1" required>
             </div>
             <div class="form-group">
                 <label for="pet-age-${petCount}">나이</label>
-                <input type="number" id="pet-age-${petCount}" class="form-control pet-age">
+                <input type="number" id="pet-age-${petCount}" name="pet_age_${petCount}" class="form-control pet-age">
             </div>
         </div>
         <div class="form-group">
             <label for="pet-memo-${petCount}">반려동물 메모</label>
-            <textarea id="pet-memo-${petCount}" class="form-control pet-memo"></textarea>
+            <textarea id="pet-memo-${petCount}" name="pet_memo_${petCount}" class="form-control pet-memo"></textarea>
         </div>
     `;
     
