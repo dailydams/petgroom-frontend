@@ -483,36 +483,65 @@ const API_CONFIG = {
     return apiRequest(`/api/customers/${id}`, 'DELETE');
   }
   
-  // 고객 일괄등록
+  // 고객 데이터 일괄 업로드
   async function importCustomers(formData) {
-    const token = TokenService.getToken();
-    if (!token) {
-      throw new Error('로그인이 필요합니다.');
-    }
-
     try {
+      console.log('API 호출: 고객 일괄 등록 시작');
+      
+      // 토큰 확인
+      const token = TokenService.getToken();
+      if (!token) {
+        console.error('인증 토큰이 없어 고객 일괄 등록을 진행할 수 없습니다.');
+        throw new Error('로그인이 필요합니다.');
+      }
+      
+      // 파일이 있는지 확인
+      if (!formData.has('file')) {
+        console.error('파일이 없습니다');
+        throw new Error('업로드할 파일이 존재하지 않습니다.');
+      }
+      
+      // FormData에 토큰 추가는 하지 않음 (헤더로 처리)
+      
+      // 직접 fetch 요청
       const response = await fetch(`${API_CONFIG.BASE_URL}/api/customers/import`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
+          // 주의: FormData를 사용하므로 Content-Type은 자동으로 설정됨
         },
         body: formData
       });
-
+      
+      // 응답 상태 확인
+      console.log('고객 일괄 등록 응답 상태:', response.status);
+      
       if (response.status === 401) {
+        // 토큰 만료 또는 인증 실패
+        console.error('인증 오류로 고객 일괄 등록 실패');
         TokenService.removeToken();
-        window.location.href = 'index.html';
         throw new Error('로그인이 필요합니다.');
       }
-
+      
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || '고객 정보 일괄등록 중 오류가 발생했습니다.');
+        // API 에러
+        let errorMsg = '고객 일괄 등록 중 오류가 발생했습니다.';
+        try {
+          const errorData = await response.json();
+          errorMsg = errorData.message || errorMsg;
+        } catch (e) {
+          console.error('API 에러 응답 파싱 실패:', e);
+        }
+        throw new Error(errorMsg);
       }
-
-      return await response.json();
+      
+      // 성공 응답 처리
+      const result = await response.json();
+      console.log('고객 일괄 등록 성공:', result);
+      
+      return result;
     } catch (error) {
-      console.error('고객 일괄등록 API 오류:', error);
+      console.error('고객 일괄 등록 중 오류:', error);
       throw error;
     }
   }
