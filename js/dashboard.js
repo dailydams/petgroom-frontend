@@ -645,26 +645,30 @@ function initCustomerEvents() {
                         
                         // API 호출 - 개선된 importCustomers 함수 사용
                         const result = await API.importCustomers(formData);
+                        console.log('일괄등록 API 응답:', result);
                         
                         if (result && result.success) {
                             // 고객 데이터를 메모리에 업데이트
                             if (result.customers && result.customers.length > 0) {
                                 console.log('일괄등록 성공:', result.customers.length, '명의 고객 정보가 등록됨');
                                 
+                                // 로컬 변수에 복사본 생성
+                                const newCustomers = [...customers];
+                                
                                 result.customers.forEach(newCustomer => {
                                     // 중복 고객 확인 (전화번호로 비교)
-                                    const existingIndex = customers.findIndex(c => c.phone === newCustomer.phone);
+                                    const existingIndex = newCustomers.findIndex(c => c.phone === newCustomer.phone);
                                     
                                     if (existingIndex !== -1) {
                                         // 기존 고객 정보 업데이트
-                                        customers[existingIndex] = {
-                                            ...customers[existingIndex],
+                                        newCustomers[existingIndex] = {
+                                            ...newCustomers[existingIndex],
                                             ...newCustomer,
                                             updatedAt: new Date().toISOString()
                                         };
                                     } else {
                                         // 새 고객 추가
-                                        customers.push({
+                                        newCustomers.push({
                                             ...newCustomer,
                                             id: newCustomer.id || Date.now().toString() + Math.random().toString(36).substr(2, 5),
                                             createdAt: new Date().toISOString(),
@@ -672,12 +676,23 @@ function initCustomerEvents() {
                                         });
                                     }
                                 });
+                                
+                                // 전역 변수 업데이트
+                                customers = newCustomers;
+                                
+                                // 로컬 스토리지에도 저장 (백업용)
+                                try {
+                                    localStorage.setItem('customers', JSON.stringify(customers));
+                                    console.log('고객 데이터가 로컬 스토리지에 저장되었습니다.');
+                                } catch (storageError) {
+                                    console.warn('로컬 스토리지 저장 실패:', storageError);
+                                }
+                                
+                                // 고객 테이블 새로고침
+                                renderCustomersTable();
                             }
                             
                             ToastNotification.show(`${result.customers ? result.customers.length : 0}명의 고객 정보가 성공적으로 등록되었습니다.`, 'success');
-                            
-                            // 테이블 새로고침
-                            renderCustomersTable();
                         } else {
                             ToastNotification.show('고객 정보 등록 중 오류가 발생했습니다.', 'error');
                         }
@@ -2423,10 +2438,14 @@ function renderCustomersTable() {
         
         tbody.innerHTML = '';
         
-        // 로컬 스토리지에서 고객 데이터 가져오기
-        const customers = JSON.parse(localStorage.getItem('customers') || '[]');
+        // 메모리에서 고객 데이터 가져오기 (전역 변수 사용)
+        // 이전: const customers = JSON.parse(localStorage.getItem('customers') || '[]');
+        // 메모리의 고객 데이터 사용
+        const customersData = customers || [];
         
-        if (customers.length === 0) {
+        console.log('고객 테이블 렌더링: 총', customersData.length, '명의 고객 정보');
+        
+        if (customersData.length === 0) {
             // 고객 데이터가 없는 경우 메시지 표시
             const tr = document.createElement('tr');
             tr.innerHTML = '<td colspan="6" class="text-center">등록된 고객이 없습니다.</td>';
@@ -2434,7 +2453,7 @@ function renderCustomersTable() {
             return;
         }
         
-        customers.forEach(customer => {
+        customersData.forEach(customer => {
             const tr = document.createElement('tr');
             
             // 최근 방문일
@@ -2498,9 +2517,10 @@ function searchCustomers(searchTerm) {
         }
         
         const searchTermLower = searchTerm.toLowerCase();
-        const customers = JSON.parse(localStorage.getItem('customers') || '[]');
+        // 메모리의 고객 데이터 사용
+        const customersData = customers || [];
         
-        const filteredCustomers = customers.filter(customer => {
+        const filteredCustomers = customersData.filter(customer => {
             return (
                 (customer.name && customer.name.toLowerCase().includes(searchTermLower)) ||
                 (customer.phone && customer.phone.includes(searchTerm)) ||
@@ -3434,4 +3454,156 @@ function handleCustomerSearchResult(customer, guardianNameInput, guardianPhoneIn
     }
     
     console.log('고객 정보 자동완성 처리 완료:', customer.name);
+}
+
+// 고객 모달 열기
+function openCustomerModal(customerId = null, mode = 'add') {
+    try {
+        const modal = document.getElementById('customer-modal');
+        const form = document.getElementById('customer-form');
+        
+        if (!modal || !form) {
+            console.error('고객 모달 또는 폼을 찾을 수 없습니다.');
+            return;
+        }
+        
+        form.reset();
+        
+        // 모달 제목 설정
+        const modalTitle = document.getElementById('customer-modal-title');
+        if (modalTitle) {
+            if (mode === 'view') {
+                modalTitle.textContent = '고객 상세 정보';
+            } else if (mode === 'edit') {
+                modalTitle.textContent = '고객 정보 수정';
+            } else {
+                modalTitle.textContent = '신규 고객 등록';
+            }
+        }
+        
+        // 읽기 전용 모드 설정 (상세 보기인 경우)
+        const isReadOnly = mode === 'view';
+        
+        // 폼 내의 모든 입력 필드 설정
+        form.querySelectorAll('input, textarea, select').forEach(input => {
+            input.readOnly = isReadOnly;
+            if (input.type === 'checkbox' || input.type === 'radio') {
+                input.disabled = isReadOnly;
+            }
+        });
+        
+        // 버튼 표시/숨김 처리
+        const saveBtn = document.getElementById('save-customer-btn');
+        const cancelBtn = document.getElementById('cancel-customer-btn');
+        const addPetBtn = document.getElementById('customer-add-pet-btn');
+        
+        if (saveBtn) saveBtn.style.display = isReadOnly ? 'none' : 'block';
+        if (addPetBtn) addPetBtn.style.display = isReadOnly ? 'none' : 'block';
+        if (cancelBtn) cancelBtn.textContent = isReadOnly ? '닫기' : '취소';
+        
+        // 기존 고객 정보 불러오기
+        if (customerId) {
+            console.log('고객 정보 조회 시작:', customerId);
+            
+            // 먼저 로컬 스토리지에서 찾기
+            const localCustomers = customers || [];
+            const customer = localCustomers.find(c => c.id === customerId);
+            
+            if (customer) {
+                console.log('고객 정보 찾음:', customer);
+                // 고객 기본 정보 설정
+                document.getElementById('customer-id').value = customer.id;
+                document.getElementById('customer-name').value = customer.name || '';
+                document.getElementById('customer-phone').value = customer.phone || '';
+                document.getElementById('customer-memo').value = customer.memo || '';
+                
+                // 알림톡 수신 동의 체크 상태 설정
+                const alimtalkConsent = document.getElementById('customer-alimtalk-consent');
+                if (alimtalkConsent) {
+                    alimtalkConsent.checked = customer.alimtalkConsent || false;
+                }
+                
+                // 반려동물 정보 설정
+                const petContainers = document.getElementById('customer-pet-containers');
+                if (petContainers) {
+                    petContainers.innerHTML = '';
+                    
+                    if (customer.pets && customer.pets.length > 0) {
+                        // 각 반려동물에 대한 폼 필드 생성
+                        customer.pets.forEach((pet, index) => {
+                            // 반려동물 폼 추가
+                            addCustomerPetForm();
+                            
+                            // 추가된 반려동물 컨테이너에 정보 설정
+                            const containers = petContainers.querySelectorAll('.pet-container');
+                            const container = containers[containers.length - 1]; // 마지막 추가된 컨테이너
+                            
+                            if (container) {
+                                // 필드 ID 계산 (1부터 시작)
+                                const petIndex = containers.length;
+                                
+                                // 각 필드 설정
+                                const nameInput = container.querySelector(`#customer-pet-name-${petIndex}`);
+                                const breedInput = container.querySelector(`#customer-pet-breed-${petIndex}`);
+                                const weightInput = container.querySelector(`#customer-pet-weight-${petIndex}`);
+                                const ageInput = container.querySelector(`#customer-pet-age-${petIndex}`);
+                                const memoInput = container.querySelector(`#customer-pet-memo-${petIndex}`);
+                                
+                                if (nameInput) nameInput.value = pet.name || '';
+                                if (breedInput) breedInput.value = pet.breed || '';
+                                if (weightInput) weightInput.value = pet.weight || '';
+                                if (ageInput) ageInput.value = pet.age || '';
+                                if (memoInput) memoInput.value = pet.memo || '';
+                                
+                                // 읽기 전용 모드 설정
+                                if (isReadOnly) {
+                                    container.querySelectorAll('input, textarea').forEach(input => {
+                                        input.readOnly = true;
+                                    });
+                                    
+                                    // 삭제 버튼 숨기기
+                                    const removeBtn = container.querySelector('.remove-pet-btn');
+                                    if (removeBtn) removeBtn.style.display = 'none';
+                                }
+                            }
+                        });
+                    } else {
+                        // 반려동물 정보가 없는 경우 기본 폼 하나 추가
+                        addCustomerPetForm();
+                        
+                        // 읽기 전용 모드인 경우 입력 필드 비활성화
+                        if (isReadOnly) {
+                            petContainers.querySelectorAll('input, textarea').forEach(input => {
+                                input.readOnly = true;
+                            });
+                            
+                            // 삭제 버튼 숨기기
+                            petContainers.querySelectorAll('.remove-pet-btn').forEach(btn => {
+                                btn.style.display = 'none';
+                            });
+                        }
+                    }
+                }
+            } else {
+                console.error('고객 정보를 찾을 수 없습니다:', customerId);
+                ToastNotification.show('고객 정보를 찾을 수 없습니다.', 'error');
+                return;
+            }
+        } else {
+            // 신규 고객인 경우 ID 필드 비우기
+            document.getElementById('customer-id').value = '';
+            
+            // 기본 반려동물 폼 하나 추가
+            const petContainers = document.getElementById('customer-pet-containers');
+            if (petContainers) {
+                petContainers.innerHTML = '';
+                addCustomerPetForm();
+            }
+        }
+        
+        modal.style.display = 'block';
+    } catch (error) {
+        console.error('고객 모달 열기 중 오류:', error);
+        ToastNotification.show('고객 정보를 불러오는 중 오류가 발생했습니다.', 'error');
+    }
 }
