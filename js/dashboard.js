@@ -36,131 +36,66 @@ const alimtalkTemplates = {
 // DOM이 로드된 후 실행
 document.addEventListener('DOMContentLoaded', async () => {
     try {
-        // 현재 날짜 확인 로그
-        console.log('초기 currentDate:', currentDate);
-        console.log('시스템 날짜:', new Date());
-        
-        // 날짜가 잘못 설정된 경우 현재 날짜로 재설정
-        if (Math.abs(currentDate.getFullYear() - new Date().getFullYear()) > 1) {
-            console.log('날짜가 잘못 설정되어 있습니다. 현재 시스템 날짜로 재설정합니다.');
-            currentDate = new Date();
-        }
-        
-        // salesChart 변수 초기화
-        window.salesChart = null;
-        chartInitialized = false;
-        
-        // Chart.js 글로벌 설정
-        if (window.Chart) {
-            // Chart.js 레지스트리 초기화
-            initChartJS();
-        }
-        
-        // 차트 컨테이너와 캔버스 확인
-        const chartContainer = document.querySelector('.chart-container');
-        if (chartContainer) {
-            let canvas = document.getElementById('sales-chart');
-            
-            // 차트 캔버스가 없으면 생성
-            if (!canvas) {
-                canvas = document.createElement('canvas');
-                canvas.id = 'sales-chart';
-                chartContainer.appendChild(canvas);
-            }
-        }
-        
-        // 네트워크 상태 모니터링 초기화
-        initNetworkStatus();
-        
         // 로그인 상태 확인
-        console.log('로그인 상태 확인 중...');
-        const currentUserStr = sessionStorage.getItem('currentUser');
-        console.log('세션에 저장된 사용자 정보:', currentUserStr);
-        
-        // 토큰 확인
         const token = sessionStorage.getItem('token');
-        console.log('세션에 저장된 토큰 존재 여부:', !!token);
-        
-        // 토큰이 없으면 로그인 페이지로 리디렉션
         if (!token) {
-            console.log('토큰이 없습니다. 로그인 페이지로 리디렉션합니다.');
+            console.log('토큰이 없습니다. 로그인 페이지로 이동합니다.');
             window.location.href = 'index.html';
             return;
         }
         
-        // API를 통한 로그인 상태 확인
-        const isLoggedInResponse = await API.getMe();
-        console.log('API.getMe() 응답:', isLoggedInResponse);
+        console.log('대시보드 초기화 중...');
         
-        if (isLoggedInResponse.success) {
-            console.log('로그인 확인 성공, 대시보드 초기화 시작');
-            // 사이드바 초기화
-            initSidebar();
-            
-            // 데이터 초기화
-            await initData();
-            
-            // 알림톡 템플릿 초기화
-            initAlimtalkTemplates();
-            
-            // 이벤트 리스너 초기화
-            initEventListeners();
-            
-            // 캘린더 초기화
-            initCalendarView();
-            
-            // 기본 캘린더 로드
-            await loadCalendar();
-        } else {
-            console.log('로그인 확인 실패, 세션에 사용자 정보가 있는지 확인합니다.');
-            
-            // 세션에 사용자 정보가 있는지 확인
-            if (currentUserStr) {
-                try {
-                    const currentUser = JSON.parse(currentUserStr);
-                    console.log('세션에 사용자 정보가 있습니다. 강제로 로그인 상태로 처리합니다.');
-                    
-                    // 사이드바 초기화
-                    initSidebar();
-                    
-                    // 데이터 초기화
-                    await initData();
-                    
-                    // 알림톡 템플릿 초기화
-                    initAlimtalkTemplates();
-                    
-                    // 이벤트 리스너 초기화
-                    initEventListeners();
-                    
-                    // 캘린더 초기화
-                    initCalendarView();
-                    
-                    // 기본 캘린더 로드
-                    await loadCalendar();
-                    
-                    return;
-                } catch (e) {
-                    console.error('세션에 저장된 사용자 정보 파싱 오류:', e);
+        // 네트워크 상태 확인
+        initNetworkStatus();
+        
+        // 로딩 애니메이션
+        LoadingIndicator.show('데이터를 불러오는 중...');
+        
+        // 현재 사용자 정보 확인
+        const currentUserStr = sessionStorage.getItem('currentUser');
+        if (!currentUserStr) {
+            console.error('사용자 정보가 없습니다. 토큰은 있지만 사용자 정보가 없습니다.');
+            // 사용자 정보를 조회하여 업데이트
+            try {
+                const userResponse = await API.getMe();
+                if (!userResponse.success || !userResponse.user) {
+                    throw new Error('사용자 정보를 가져올 수 없습니다.');
                 }
+                
+                sessionStorage.setItem('currentUser', JSON.stringify(userResponse.user));
+                console.log('사용자 정보를 API에서 가져와 업데이트했습니다.');
+            } catch (error) {
+                console.error('사용자 정보 조회 오류:', error);
+                // 토큰 삭제 및 로그인 페이지로 이동
+                sessionStorage.removeItem('token');
+                sessionStorage.removeItem('tokenExpires');
+                window.location.href = 'index.html';
+                return;
             }
-            
-            // 토큰 삭제
-            sessionStorage.removeItem('token');
-            sessionStorage.removeItem('tokenExpires');
-            sessionStorage.removeItem('currentUser');
-            
-            // 로그인 페이지로 리디렉트
-            console.log('로그인 페이지로 리디렉션합니다.');
-            window.location.href = 'index.html';
         }
-    } catch (error) {
-        console.error('초기화 중 오류:', error);
-        ToastNotification.show('애플리케이션 초기화 중 오류가 발생했습니다.', 'error');
         
-        // 오류 발생 시 로그인 페이지로 리디렉션
-        setTimeout(() => {
-            window.location.href = 'index.html';
-        }, 2000);
+        // 데이터 초기화
+        await initData();
+        
+        // Chart.js 초기화
+        initChartJS();
+        
+        // 사이드바 초기화
+        initSidebar();
+        
+        // 이벤트 리스너 초기화
+        initEventListeners();
+        
+        // 달력 뷰 초기화
+        initCalendarView();
+        
+        // 로딩 애니메이션 숨기기
+        LoadingIndicator.hide();
+    } catch (error) {
+        console.error('대시보드 초기화 오류:', error);
+        LoadingIndicator.hide();
+        ToastNotification.show('대시보드를 불러오는 중 오류가 발생했습니다.', 'error');
     }
 });
 
