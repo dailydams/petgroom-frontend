@@ -484,33 +484,33 @@ const API_CONFIG = {
   async function importCustomers(formData) {
     const token = TokenService.getToken();
     if (!token) {
-        throw new Error('로그인이 필요합니다.');
+      throw new Error('로그인이 필요합니다.');
     }
 
     try {
-        const response = await fetch(`${API_CONFIG.BASE_URL}/api/customers/import`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`
-            },
-            body: formData
-        });
+      const response = await fetch(`${API_CONFIG.BASE_URL}/api/customers/import`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
 
-        if (response.status === 401) {
-            TokenService.removeToken();
-            window.location.href = 'index.html';
-            throw new Error('로그인이 필요합니다.');
-        }
+      if (response.status === 401) {
+        TokenService.removeToken();
+        window.location.href = 'index.html';
+        throw new Error('로그인이 필요합니다.');
+      }
 
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || '고객 정보 일괄등록 중 오류가 발생했습니다.');
-        }
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || '고객 정보 일괄등록 중 오류가 발생했습니다.');
+      }
 
-        return await response.json();
+      return await response.json();
     } catch (error) {
-        console.error('고객 일괄등록 API 오류:', error);
-        throw error;
+      console.error('고객 일괄등록 API 오류:', error);
+      throw error;
     }
   }
   
