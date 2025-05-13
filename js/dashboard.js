@@ -2068,22 +2068,41 @@ function addPetForm() {
 // 알림톡 미리보기 업데이트
 function updateAlimtalkPreviews() {
     try {
-        // 미리보기에 사용할 샘플 데이터
-        let sampleData = {
-            shopName: '딥펫샵',
-            shopPhone: '010-1234-5678',
-            appointmentDate: '2023-10-15 14:00',
+        // 미리보기에 사용할 데이터
+        let previewData = {
+            shopName: '',
+            shopPhone: '',
+            appointmentDate: '',
             guardianName: '',
             petNames: '',
             serviceName: ''
         };
         
-        // 폼에서 실제 입력된 데이터 가져오기
+        // 매장 정보 가져오기 (설정에서)
+        const shopNameInput = document.getElementById('shop-name');
+        const shopPhoneInput = document.getElementById('shop-phone');
+        
+        if (shopNameInput && shopNameInput.value) {
+            previewData.shopName = shopNameInput.value;
+        } else {
+            // 로컬 스토리지에서 매장 정보 가져오기
+            const shopSettings = JSON.parse(localStorage.getItem('shopSettings') || '{}');
+            previewData.shopName = shopSettings.name || '딥펫샵';
+        }
+        
+        if (shopPhoneInput && shopPhoneInput.value) {
+            previewData.shopPhone = shopPhoneInput.value;
+        } else {
+            const shopSettings = JSON.parse(localStorage.getItem('shopSettings') || '{}');
+            previewData.shopPhone = shopSettings.phone || '010-1234-5678';
+        }
+        
+        // 보호자 이름 가져오기
         const guardianNameInput = document.getElementById('guardian-name');
         if (guardianNameInput && guardianNameInput.value) {
-            sampleData.guardianName = guardianNameInput.value;
+            previewData.guardianName = guardianNameInput.value;
         } else {
-            sampleData.guardianName = '김고객';
+            previewData.guardianName = '김고객';
         }
         
         // 반려동물 이름 가져오기
@@ -2094,22 +2113,22 @@ function updateAlimtalkPreviews() {
                 .filter(name => name)
                 .join(', ');
             
-            sampleData.petNames = petNames || '멍멍이';
+            previewData.petNames = petNames || '멍멍이';
         } else {
-            sampleData.petNames = '멍멍이';
+            previewData.petNames = '멍멍이';
         }
         
         // 서비스 이름 가져오기
         const selectedService = document.getElementById('selected-service');
         if (selectedService && selectedService.value) {
-            sampleData.serviceName = selectedService.value;
+            previewData.serviceName = selectedService.value;
         } else {
             // 선택된 서비스 버튼에서 가져오기
             const activeServiceBtn = document.querySelector('.service-btn.active');
             if (activeServiceBtn) {
-                sampleData.serviceName = activeServiceBtn.dataset.service || '미용';
+                previewData.serviceName = activeServiceBtn.dataset.service || '미용';
             } else {
-                sampleData.serviceName = '미용';
+                previewData.serviceName = '미용';
             }
         }
         
@@ -2118,7 +2137,28 @@ function updateAlimtalkPreviews() {
         const timeInput = document.getElementById('appointment-start-time');
         
         if (dateInput && dateInput.value && timeInput && timeInput.value) {
-            sampleData.appointmentDate = `${dateInput.value} ${timeInput.value}`;
+            // 날짜를 한국어 형식으로 변환
+            const selectedDate = new Date(dateInput.value + 'T' + timeInput.value);
+            const options = { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric', 
+                weekday: 'long',
+                hour: '2-digit', 
+                minute: '2-digit'
+            };
+            previewData.appointmentDate = selectedDate.toLocaleDateString('ko-KR', options);
+        } else {
+            const now = new Date();
+            const options = { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric', 
+                weekday: 'long',
+                hour: '2-digit', 
+                minute: '2-digit'
+            };
+            previewData.appointmentDate = now.toLocaleDateString('ko-KR', options);
         }
         
         // 각 템플릿 타입에 대해 미리보기 업데이트
@@ -2129,12 +2169,12 @@ function updateAlimtalkPreviews() {
                 if (contentContainer) {
                     // 변수 치환
                     let previewContent = alimtalkTemplates[type]
-                        .replace(/{{매장명}}/g, sampleData.shopName)
-                        .replace(/{{예약날짜}}/g, sampleData.appointmentDate)
-                        .replace(/{{보호자명}}/g, sampleData.guardianName)
-                        .replace(/{{반려동물명}}/g, sampleData.petNames)
-                        .replace(/{{매장번호}}/g, sampleData.shopPhone)
-                        .replace(/{{서비스명}}/g, sampleData.serviceName);
+                        .replace(/{{매장명}}/g, previewData.shopName)
+                        .replace(/{{예약날짜}}/g, previewData.appointmentDate)
+                        .replace(/{{보호자명}}/g, previewData.guardianName)
+                        .replace(/{{반려동물명}}/g, previewData.petNames)
+                        .replace(/{{매장번호}}/g, previewData.shopPhone)
+                        .replace(/{{서비스명}}/g, previewData.serviceName);
                     
                     // HTML로 변환하여 표시 (줄바꿈 유지)
                     contentContainer.innerHTML = previewContent
@@ -2973,5 +3013,407 @@ function renderSalesChart(chartData, period) {
     } catch (error) {
         console.error('매출 차트 렌더링 중 오류:', error);
         ToastNotification.show('매출 차트를 생성하는 중 오류가 발생했습니다.', 'error');
+    }
+}
+
+// 고객 테이블 렌더링 함수
+function renderCustomersTable() {
+    try {
+        const tbody = document.querySelector('#customers-table tbody');
+        if (!tbody) {
+            console.error('고객 테이블을 찾을 수 없습니다.');
+            return;
+        }
+        
+        tbody.innerHTML = '';
+        
+        // 로컬 스토리지에서 고객 데이터 가져오기
+        const customers = JSON.parse(localStorage.getItem('customers') || '[]');
+        
+        if (customers.length === 0) {
+            // 고객 데이터가 없는 경우 메시지 표시
+            const tr = document.createElement('tr');
+            tr.innerHTML = '<td colspan="6" class="text-center">등록된 고객이 없습니다.</td>';
+            tbody.appendChild(tr);
+            return;
+        }
+        
+        customers.forEach(customer => {
+            const tr = document.createElement('tr');
+            
+            // 최근 방문일
+            let lastVisit = '없음';
+            if (customer.lastVisit) {
+                lastVisit = new Date(customer.lastVisit).toLocaleDateString('ko-KR');
+            }
+            
+            // 반려동물 이름 목록
+            const petNames = customer.pets ? customer.pets.map(p => p.name).join(', ') : '-';
+            
+            tr.innerHTML = `
+                <td>${customer.name || '-'}</td>
+                <td>${customer.phone || '-'}</td>
+                <td>${petNames}</td>
+                <td>${lastVisit}</td>
+                <td>${customer.visits || 0}</td>
+                <td>
+                    <button class="btn btn-sm btn-primary view-customer" data-id="${customer.id}">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-sm btn-secondary edit-customer" data-id="${customer.id}">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                </td>
+            `;
+            
+            tbody.appendChild(tr);
+        });
+        
+        // 버튼 이벤트 추가
+        document.querySelectorAll('.view-customer').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const customerId = btn.dataset.id;
+                // 고객 상세 보기 모달 열기
+                openCustomerModal(customerId, 'view');
+            });
+        });
+        
+        document.querySelectorAll('.edit-customer').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const customerId = btn.dataset.id;
+                // 고객 수정 모달 열기
+                openCustomerModal(customerId, 'edit');
+            });
+        });
+    } catch (error) {
+        console.error('고객 테이블 렌더링 중 오류:', error);
+        ToastNotification.show('고객 목록을 불러오는 중 오류가 발생했습니다.', 'error');
+    }
+}
+
+// 고객 검색 함수
+function searchCustomers(searchTerm) {
+    try {
+        if (!searchTerm || searchTerm.trim() === '') {
+            renderCustomersTable();
+            return;
+        }
+        
+        const searchTermLower = searchTerm.toLowerCase();
+        const customers = JSON.parse(localStorage.getItem('customers') || '[]');
+        
+        const filteredCustomers = customers.filter(customer => {
+            return (
+                (customer.name && customer.name.toLowerCase().includes(searchTermLower)) ||
+                (customer.phone && customer.phone.includes(searchTerm)) ||
+                (customer.pets && customer.pets.some(pet => 
+                    pet.name && pet.name.toLowerCase().includes(searchTermLower)
+                ))
+            );
+        });
+        
+        const tbody = document.querySelector('#customers-table tbody');
+        if (!tbody) {
+            console.error('고객 테이블을 찾을 수 없습니다.');
+            return;
+        }
+        
+        tbody.innerHTML = '';
+        
+        if (filteredCustomers.length === 0) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = '<td colspan="6" class="text-center">검색 결과가 없습니다.</td>';
+            tbody.appendChild(tr);
+            return;
+        }
+        
+        filteredCustomers.forEach(customer => {
+            const tr = document.createElement('tr');
+            
+            // 최근 방문일
+            let lastVisit = '없음';
+            if (customer.lastVisit) {
+                lastVisit = new Date(customer.lastVisit).toLocaleDateString('ko-KR');
+            }
+            
+            // 반려동물 이름 목록
+            const petNames = customer.pets ? customer.pets.map(p => p.name).join(', ') : '-';
+            
+            tr.innerHTML = `
+                <td>${customer.name || '-'}</td>
+                <td>${customer.phone || '-'}</td>
+                <td>${petNames}</td>
+                <td>${lastVisit}</td>
+                <td>${customer.visits || 0}</td>
+                <td>
+                    <button class="btn btn-sm btn-primary view-customer" data-id="${customer.id}">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-sm btn-secondary edit-customer" data-id="${customer.id}">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                </td>
+            `;
+            
+            tbody.appendChild(tr);
+        });
+        
+        // 버튼 이벤트 추가
+        document.querySelectorAll('.view-customer').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const customerId = btn.dataset.id;
+                openCustomerModal(customerId, 'view');
+            });
+        });
+        
+        document.querySelectorAll('.edit-customer').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const customerId = btn.dataset.id;
+                openCustomerModal(customerId, 'edit');
+            });
+        });
+    } catch (error) {
+        console.error('고객 검색 중 오류:', error);
+        ToastNotification.show('고객 검색 중 오류가 발생했습니다.', 'error');
+    }
+}
+
+// 계정 모달 열기
+function openAccountModal(email = null) {
+    try {
+        const modal = document.getElementById('account-modal');
+        const form = document.getElementById('account-form');
+        
+        if (!modal || !form) {
+            console.error('계정 모달 또는 폼을 찾을 수 없습니다.');
+            return;
+        }
+        
+        form.reset();
+        
+        // 모달 제목 설정
+        const modalTitle = document.getElementById('account-modal-title');
+        if (modalTitle) {
+            modalTitle.textContent = email ? '계정 수정' : '계정 추가';
+        }
+        
+        // 기존 계정 정보 불러오기
+        if (email) {
+            const users = JSON.parse(localStorage.getItem('users') || '[]');
+            const user = users.find(u => u.email === email);
+            
+            if (user) {
+                document.getElementById('account-id').value = user.id || '';
+                document.getElementById('account-email').value = user.email;
+                document.getElementById('account-name').value = user.name;
+                document.getElementById('account-phone').value = user.phone || '';
+                document.getElementById('account-memo').value = user.memo || '';
+                
+                // 권한 설정
+                if (user.role === 'admin') {
+                    document.getElementById('role-admin').checked = true;
+                } else {
+                    document.getElementById('role-staff').checked = true;
+                }
+                
+                // 수정 시에는 비밀번호 필드를 선택사항으로 변경
+                const passwordInput = document.getElementById('account-password');
+                const passwordLabel = document.querySelector('#password-group label');
+                
+                if (passwordInput) passwordInput.required = false;
+                if (passwordLabel) passwordLabel.textContent = '비밀번호 (변경시에만 입력)';
+            }
+        } else {
+            // 신규 계정인 경우 비밀번호 필수
+            const passwordInput = document.getElementById('account-password');
+            const passwordLabel = document.querySelector('#password-group label');
+            
+            if (passwordInput) passwordInput.required = true;
+            if (passwordLabel) passwordLabel.textContent = '비밀번호';
+            document.getElementById('account-id').value = '';
+        }
+        
+        modal.style.display = 'block';
+    } catch (error) {
+        console.error('계정 모달 열기 중 오류:', error);
+        ToastNotification.show('계정 정보를 불러오는 중 오류가 발생했습니다.', 'error');
+    }
+}
+
+// 계정 목록 테이블 렌더링 함수
+function renderAccountsTable() {
+    try {
+        const tbody = document.querySelector('#accounts-table tbody');
+        if (!tbody) {
+            console.error('계정 테이블을 찾을 수 없습니다.');
+            return;
+        }
+        
+        tbody.innerHTML = '';
+        
+        // 로컬 스토리지에서 사용자 목록 가져오기
+        const users = JSON.parse(localStorage.getItem('users') || '[]');
+        
+        if (users.length === 0) {
+            // 사용자 데이터가 없는 경우 메시지 표시
+            const tr = document.createElement('tr');
+            tr.innerHTML = '<td colspan="6" class="text-center">등록된 계정이 없습니다.</td>';
+            tbody.appendChild(tr);
+            return;
+        }
+        
+        users.forEach(user => {
+            const tr = document.createElement('tr');
+            
+            tr.innerHTML = `
+                <td>${user.role === 'admin' ? '관리자' : '직원'}</td>
+                <td>${user.email || '-'}</td>
+                <td>${user.name || '-'}</td>
+                <td>${user.phone || '-'}</td>
+                <td>${user.memo || '-'}</td>
+                <td>
+                    ${user.role !== 'admin' ? `
+                        <button class="btn btn-sm btn-secondary edit-account" data-id="${user.email}">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger delete-account" data-id="${user.email}">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    ` : '-'}
+                </td>
+            `;
+            
+            tbody.appendChild(tr);
+        });
+        
+        // 계정 수정/삭제 버튼 이벤트 추가
+        document.querySelectorAll('.edit-account').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const userEmail = btn.dataset.id;
+                openAccountModal(userEmail);
+            });
+        });
+        
+        document.querySelectorAll('.delete-account').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const userEmail = btn.dataset.id;
+                if (confirm(`"${userEmail}" 계정을 삭제하시겠습니까?`)) {
+                    deleteAccount(userEmail);
+                }
+            });
+        });
+    } catch (error) {
+        console.error('계정 테이블 렌더링 중 오류:', error);
+        ToastNotification.show('계정 목록을 불러오는 중 오류가 발생했습니다.', 'error');
+    }
+}
+
+// 계정 삭제 함수
+function deleteAccount(email) {
+    try {
+        if (!email) return;
+        
+        // 로컬 스토리지에서 사용자 목록 가져오기
+        const users = JSON.parse(localStorage.getItem('users') || '[]');
+        
+        // 해당 이메일의 계정 제외하고 새 배열 생성
+        const updatedUsers = users.filter(user => user.email !== email);
+        
+        // 로컬 스토리지에 저장
+        localStorage.setItem('users', JSON.stringify(updatedUsers));
+        
+        // 테이블 다시 렌더링
+        renderAccountsTable();
+        
+        ToastNotification.show('계정이 삭제되었습니다.', 'success');
+    } catch (error) {
+        console.error('계정 삭제 중 오류:', error);
+        ToastNotification.show('계정 삭제 중 오류가 발생했습니다.', 'error');
+    }
+}
+
+// 계정 정보 저장 (폼에서)
+function saveAccountFromForm() {
+    try {
+        // 폼 데이터 수집
+        const accountId = document.getElementById('account-id').value;
+        const email = document.getElementById('account-email').value;
+        const password = document.getElementById('account-password').value;
+        const name = document.getElementById('account-name').value;
+        const phone = document.getElementById('account-phone').value;
+        const memo = document.getElementById('account-memo').value;
+        const role = document.querySelector('input[name="role"]:checked').value;
+        
+        // 로컬 스토리지에서 사용자 목록 가져오기
+        const users = JSON.parse(localStorage.getItem('users') || '[]');
+        
+        // 이메일 중복 확인 (신규 계정인 경우)
+        if (!accountId) {
+            const existingUser = users.find(user => user.email === email);
+            if (existingUser) {
+                ToastNotification.show('이미 등록된 이메일 주소입니다.', 'error');
+                return;
+            }
+        }
+        
+        // 기존 계정 수정 또는 신규 계정 추가
+        if (accountId) {
+            // 기존 계정 수정
+            const userIndex = users.findIndex(user => user.id === accountId);
+            
+            if (userIndex !== -1) {
+                users[userIndex] = {
+                    ...users[userIndex],
+                    email,
+                    name,
+                    phone,
+                    memo,
+                    role,
+                    updatedAt: new Date().toISOString()
+                };
+                
+                // 비밀번호가 입력된 경우에만 업데이트
+                if (password) {
+                    users[userIndex].password = password; // 실제로는 암호화 필요
+                }
+                
+                ToastNotification.show('계정 정보가 수정되었습니다.', 'success');
+            } else {
+                ToastNotification.show('계정을 찾을 수 없습니다.', 'error');
+                return;
+            }
+        } else {
+            // 신규 계정 추가
+            const newUser = {
+                id: Date.now().toString(),
+                email,
+                password, // 실제로는 암호화 필요
+                name,
+                phone,
+                memo,
+                role,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+            
+            users.push(newUser);
+            ToastNotification.show('새 계정이 추가되었습니다.', 'success');
+        }
+        
+        // 로컬 스토리지에 저장
+        localStorage.setItem('users', JSON.stringify(users));
+        
+        // 모달 닫기
+        document.getElementById('account-modal').style.display = 'none';
+        
+        // 계정 목록 다시 렌더링
+        renderAccountsTable();
+    } catch (error) {
+        console.error('계정 저장 중 오류:', error);
+        ToastNotification.show('계정 정보 저장 중 오류가 발생했습니다.', 'error');
     }
 }
