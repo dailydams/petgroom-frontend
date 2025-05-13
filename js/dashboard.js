@@ -63,9 +63,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         initNetworkStatus();
         
         // 로그인 상태 확인
-        const isLoggedIn = await API.getMe();
+        console.log('로그인 상태 확인 중...');
+        const currentUserStr = sessionStorage.getItem('currentUser');
+        console.log('세션에 저장된 사용자 정보:', currentUserStr);
         
-        if (isLoggedIn.success) {
+        // 토큰 확인
+        const token = sessionStorage.getItem('token');
+        console.log('세션에 저장된 토큰 존재 여부:', !!token);
+        
+        // API를 통한 로그인 상태 확인
+        const isLoggedInResponse = await API.getMe();
+        console.log('API.getMe() 응답:', isLoggedInResponse);
+        
+        if (isLoggedInResponse.success) {
+            console.log('로그인 확인 성공, 대시보드 초기화 시작');
             // 사이드바 초기화
             initSidebar();
             
@@ -84,7 +95,40 @@ document.addEventListener('DOMContentLoaded', async () => {
             // 기본 캘린더 로드
             await loadCalendar();
         } else {
+            console.log('로그인 확인 실패, 세션에 사용자 정보가 있는지 확인합니다.');
+            
+            // 세션에 사용자 정보가 있는지 확인
+            if (currentUserStr) {
+                try {
+                    const currentUser = JSON.parse(currentUserStr);
+                    console.log('세션에 사용자 정보가 있습니다. 강제로 로그인 상태로 처리합니다.');
+                    
+                    // 사이드바 초기화
+                    initSidebar();
+                    
+                    // 데이터 초기화
+                    await initData();
+                    
+                    // 알림톡 템플릿 초기화
+                    initAlimtalkTemplates();
+                    
+                    // 이벤트 리스너 초기화
+                    initEventListeners();
+                    
+                    // 캘린더 초기화
+                    initCalendarView();
+                    
+                    // 기본 캘린더 로드
+                    await loadCalendar();
+                    
+                    return;
+                } catch (e) {
+                    console.error('세션에 저장된 사용자 정보 파싱 오류:', e);
+                }
+            }
+            
             // 로그인 페이지로 리디렉트
+            console.log('로그인 페이지로 리디렉션합니다.');
             window.location.href = 'index.html';
         }
     } catch (error) {
